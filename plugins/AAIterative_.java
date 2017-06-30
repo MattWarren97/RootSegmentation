@@ -3,6 +3,9 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.*;
 import java.awt.*;
 import java.util.Arrays;
+import ij.macro.Interpreter;
+import ij.plugin.Selection;
+import ij.plugin.ImageCalculator;
 
 public class AAIterative_ implements PlugInFilter {
 	
@@ -36,7 +39,48 @@ public class AAIterative_ implements PlugInFilter {
 		runGaussianMask(ip);
 		medianFilter(ip, MED_RD);
 		applyThreshold(ip, 75, 255);
-		ip.setBinaryThreshold();
+		
+		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
+		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
+		
+		if (iPlus == null) {
+			System.err.println("iPlus is null");
+		}
+		if (iPlusCopy == null) {
+			System.err.println("iPlusCopy is null");
+		}
+		ImageCalculator ic = new ImageCalculator();
+		ImagePlus greyScaleMask = ic.run("Subtract", iPlusCopy, iPlus);
+		if (greyScaleMask == null) {
+			System.err.println("greyscalemask is null");
+		}
+		greyScaleMask.show();
+		
+		//ip.fill(ipCopy.getMask());
+		//ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
+		
+		//iPlusCopy.show();
+		/*
+		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
+		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
+		
+
+		(new ImagePlus("aaaaaa", iPlus.getMask())).copy();
+		iPlusCopy.paste();
+		
+		iPlus.show();
+		iPlusCopy.show();
+		*/
+
+		//ip.createSelection();
+		
+
+
+		
+		
+		
+		//ipCopy.fill(ip.getMask());
+		//ip.setBinaryThreshold();
 		//adjustGaussMeanStd(ip);
 		/*
 		byte[] pixels = (byte[])ip.getPixels();
@@ -54,6 +98,7 @@ public class AAIterative_ implements PlugInFilter {
 		}
 		*/
 		
+		
 	}
 	
 	private void adjustGaussMeanStd(ImageProcessor ip) {
@@ -66,7 +111,7 @@ public class AAIterative_ implements PlugInFilter {
 		//but I'm not quite sure how to do that, so will do it here in two steps (threshold, mask) that both need to create their own image.
 		
 		callCount++;
-		System.err.println("Call count is " + callCount);
+		System.err.println("Call count is aaa " + callCount);
 		byte[] pixels = (byte[]) ip.getPixels();
 		
 		int width = ip.getWidth();
