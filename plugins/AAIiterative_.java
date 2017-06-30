@@ -1,0 +1,211 @@
+import ij.*; //   \\Cseg_2\erc\ADMIN\Programmes\Fiji_201610_JAVA8.app\jars\ij-1.51g.jar needs to be added to classpath when compiling(-cp))
+import ij.plugin.filter.PlugInFilter;
+import ij.process.*;
+import java.awt.*;
+import java.util.Arrays;
+
+public class AASegmentationIterativeAttempt_ implements PlugInFilter {
+	
+	
+	static final int MED_RD = 5;
+	static final int X = 500;
+	static final int Y = 500;
+	static final int Z = 300;
+	static final int RM_OUT_FILTER = 4;
+	static final int[] SD_ARRAY = {4, 5, 6};
+	static final int[] ERODE_ARRAY = {19,7,3};
+	static final int[] MAX_STD = {8, 9, 10};
+	int callCount;
+	double gauss_mean;
+	double gauss_std;
+	ImageProcessor ipCopy;
+	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
+	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
+
+	public AASegmentationIterativeAttempt_() {
+		callCount = 0;
+		gauss_mean = 85;
+		gauss_std = 4.5;
+	}
+
+	
+	public void run(ImageProcessor ip) {
+		
+		ipCopy = (ImageProcessor) ip.clone();
+		ipCopy.setPixels(ip.getPixelsCopy());
+		runGaussianMask(ip);
+		medianFilter(ip, MED_RD);
+		applyThreshold(ip, 75, 255);
+		ip.setBinaryThreshold();
+		//adjustGaussMeanStd(ip);
+		/*
+		byte[] pixels = (byte[])ip.getPixels();
+		int width = ip.getWidth();
+		Rectangle r = ip.getRoi();
+		
+		int offset, i;
+		
+		for (int y = r.y; y<(r.y+r.height); y++) {
+			offset = y*width;
+			for (int x = r.x; x<(r.x+r.width); x++) {
+				i = offset+x;
+				pixels[i] = (byte) (255-pixels[i]);
+			}
+		}
+		*/
+		
+	}
+	
+	private void adjustGaussMeanStd(ImageProcessor ip) {
+		
+		//ip.applyTable(pixelsTable);
+	}
+	
+	private void runGaussianMask(ImageProcessor ip) {
+		//It would be quicker to find the gaussianValue for each pixel, then decide whether it meets the threshold criteria and create the mask pixel by pixel.
+		//but I'm not quite sure how to do that, so will do it here in two steps (threshold, mask) that both need to create their own image.
+		
+		callCount++;
+		System.err.println("Call count is " + callCount);
+		byte[] pixels = (byte[]) ip.getPixels();
+		
+		int width = ip.getWidth();
+		Rectangle r = ip.getRoi();
+		int offset, i;
+		for (int y = r.y; y < (r.y+r.height); y++) {
+			offset = y*width;
+			for (int x = r.x; x < (r.x+r.width); x++) {
+				i = offset+x;
+				double newValue = Math.floor((Math.exp(-((Math.pow(pixels[i]-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
+
+				int newInt = (int) newValue;
+				byte newByte = (byte) newInt;
+				pixels[i] = newByte;
+			}
+		}
+		
+
+		
+	}
+	
+	private void applyThreshold(ImageProcessor ip, int lowGaussianLimit, int highGaussianLimit) {
+		//ip.resetBinaryThreshold(); //copying some linesf rom the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
+		int[] lut = new int[256];
+		int whiteColor = 255;
+		int blackColor = 0;
+		for (int i = 0; i < 256; i++) {
+			if (i>=lowGaussianLimit  && i <= highGaussianLimit) {
+				lut[i] = whiteColor;
+			}
+			else {
+				lut[i] = blackColor;
+			}
+		}
+		ip.applyTable(lut);
+		ip.setBinaryThreshold();
+	}
+	
+		//this implementation from http://svg.dmi.unict.it/iplab/imagej/Plugins/Forensics/Median_filter2/Median_Filter.html
+	private void medianFilter(ImageProcessor ip, int radius) {
+
+		int width = X;
+		int height = Y;
+		
+		byte[] pixels = (byte[]) ip.getPixels();
+		
+		int[] tmp=new int[pixels.length];
+		for (int i=0;i<pixels.length;i++)
+			tmp[i]=pixels[i]&0xff; //this.... is just pixels[i], surely?
+		
+		int[][] arrays = create2DIntArray(pixels, width, height);
+		
+		int [][] medianArray = new int [width][height];
+		for(int j=0;j<height;j++)
+			for(int i=0;i<width;i++)
+				medianArray[i][j] = pixelMedian(arrays,MED_RD,width,height,i,j);
+		
+		int[] output = array_2d_to_1d(medianArray, width, height);
+			
+		for(int j=0;j<output.length;j++)
+			pixels[j]=(byte)output[j];
+	}
+	
+	private int pixelMedian(int[][] array2d, int radius, int width, int height, int x, int y) {
+		
+        int sum = 0;
+        int countInRange = 0;
+		int[] inRadius=new int[radius*radius];;
+        for(int j=0;j<radius;j++)
+        {
+            for(int i=0;i<radius;i++)
+            {
+	            if(((x-1+i)>=0) && ((y-1+j)>=0) && ((x-1+i)<width) && ((y-1+j)<height))
+                {
+					inRadius[countInRange]=array2d[x-1+i][y-1+j];
+	                countInRange++;
+	            }
+            }
+        }
+		Arrays.sort(inRadius);
+        if(countInRange==0) 
+            return 0;
+		int medianIndex = (int)(countInRange/2);
+        return (inRadius[medianIndex]);
+    }
+	
+	private int[][] create2DIntArray(byte[] pix, int width, int height) {
+		int[][] array2d = new int[width][height];
+		
+		for (int i = 0; i<width; i++) {
+			for(int j = 0; j < height; j++) {
+				array2d[i][j] = pix[i+(j*width)];
+			}
+		}
+		return array2d;
+	}
+	
+	private int[] array_2d_to_1d(int[][] values, int width, int height) {
+		int[] output = new int [width*height];
+		
+		for(int i=0;i<width;i++) {
+			for(int j=0;j<height;j++) {
+				output[i+(j*width)] = values[i][j];
+			}
+		}
+		
+		return output;
+	}
+	
+	
+	
+	private int segmentAndCalculateMean(ImageProcessor ip, float init_mean, float init_std) {
+		//change canvas size (for median filter?)
+		//set the measurements
+		//Duplicate the first slice (twice)
+		//run("Macro...", "code=v=(1/("+SD+"*sqrt(2*3.14)))*exp((-(v-"+M+")*(v-"+M+"))/(2*"+SD+"*"+SD+"))/(1/("+SD+"*sqrt(2*3.14)))*exp((0)/(2*("+SD+"*"+SD+")))*255");
+
+		//Run that guassian formula, pixel = (1/(SD*sqrt(2*3.14))) * exp((-(pixel-MEAN)*(pixel-MEAN))/(2*SD*SD)) / (1/(SD*sqrt(2*3.14))) * exp((0/(2*SD*SD))) * 255;
+		//simplifies to pixel = exp((-(pixel-MEAN)^2)/2*SD^2) * 255
+		
+		//then threshold on that (is equivalent to ~1.5xS.D. either side of mean).
+		//convert to mask, invert.
+		
+		//run a median filter
+		//remove outliers
+		
+		return 0;
+	}
+	
+	void showAbout() {
+		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
+	}
+	
+	//Called by the system when the plugin is run. [arg is selected by the user at that time]
+	public int setup(String arg, ImagePlus imp) {
+		if (arg.equals("about")) {
+			showAbout();
+			return DONE; //These enums are defined in PlugInFilter.
+		}
+		return DOES_8G+DOES_STACKS+SUPPORTS_MASKING;
+	}
+}
