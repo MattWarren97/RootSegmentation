@@ -4,7 +4,7 @@ import ij.process.*;
 import java.awt.*;
 import java.util.Arrays;
 
-public class AASegmentationIterativeAttempt_ implements PlugInFilter {
+public class AAIterative_ implements PlugInFilter {
 	
 	
 	static final int MED_RD = 5;
@@ -22,7 +22,7 @@ public class AASegmentationIterativeAttempt_ implements PlugInFilter {
 	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
 
-	public AASegmentationIterativeAttempt_() {
+	public AAIterative_() {
 		callCount = 0;
 		gauss_mean = 85;
 		gauss_std = 4.5;
