@@ -1,0 +1,1 @@
+@JAVAC %1 -cp \\Roose_group\M_Warren\Fiji_201610_JAVA8.app\jars\ij-*.jar -d \\Roose_group\M_Warren\Fiji_201610_JAVA8.app\plugins
