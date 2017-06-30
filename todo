@@ -1,0 +1,2 @@
+test if plugins with a new file name are immediately usable -- if they are
+test if deleting plugin AAIterative then recompiling and adding it back will allow it to work
