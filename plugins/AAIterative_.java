@@ -6,6 +6,10 @@ import java.util.Arrays;
 import ij.macro.Interpreter;
 import ij.plugin.Selection;
 import ij.plugin.ImageCalculator;
+import ij.plugin.filter.Analyzer;
+import ij.measure.Measurements;
+import ij.measure.ResultsTable;
+import ij.gui.ImageWindow;
 
 public class AAIterative_ implements PlugInFilter {
 	
@@ -31,7 +35,7 @@ public class AAIterative_ implements PlugInFilter {
 		gauss_std = 4.5;
 	}
 
-	
+	//on an image stack, the run method is called on each image in order.
 	public void run(ImageProcessor ip) {
 		
 		ipCopy = (ImageProcessor) ip.clone();
@@ -40,66 +44,61 @@ public class AAIterative_ implements PlugInFilter {
 		medianFilter(ip, MED_RD);
 		applyThreshold(ip, 75, 255);
 		
+
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
 		
-		if (iPlus == null) {
-			System.err.println("iPlus is null");
-		}
-		if (iPlusCopy == null) {
-			System.err.println("iPlusCopy is null");
-		}
-		ImageCalculator ic = new ImageCalculator();
-		ImagePlus greyScaleMask = ic.run("Subtract", iPlusCopy, iPlus);
-		if (greyScaleMask == null) {
-			System.err.println("greyscalemask is null");
-		}
-		greyScaleMask.show();
+		//Why on earth does this not work when I comment out these two lines????
+		//Perhaps 'getSelectedWindow' requires that there actually be a window... Oh no.
 		
-		//ip.fill(ipCopy.getMask());
-		//ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
+		iPlusCopy.show("iPlusCopy");
+		iPlus.show("iPlus");
 		
-		//iPlusCopy.show();
-		/*
-		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
-		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
 		
+		setSelectedWindow(iPlus.getWindow());
+					
+		Selection sel = new Selection();
+		sel.run("from");
+		sel.run("inverse");
 
-		(new ImagePlus("aaaaaa", iPlus.getMask())).copy();
-		iPlusCopy.paste();
+		setSelectedWindow(iPlusCopy.getWindow());
+		sel.run("restore");
 		
-		iPlus.show();
-		iPlusCopy.show();
+		int measurements = Measurements.MEAN + Measurements.STD_DEV;
+		
+		ResultsTable rt = new ResultsTable();
+		Analyzer an = new Analyzer(iPlusCopy, measurements, rt);
+		
+		an.measure();
+		double newMean = rt.getValue("Mean", rt.getCounter()-1);
+		double newStd = rt.getValue("StdDev", rt.getCounter()-1);
+		
+		gauss_mean = newMean;
+		gauss_std = newStd;
+		System.out.println("Mean: " + newMean + ", Std_dev: " + newStd);
+		/*ImageStatistics stats = ImageStatistics.getStatistics(ipCopy, Measurements.MEAN, iPlusCopy.getCalibration());
+		System.out.println("Mean is " + stats.mean);
 		*/
-
-		//ip.createSelection();
-		
-
-
-		
-		
-		
-		//ipCopy.fill(ip.getMask());
-		//ip.setBinaryThreshold();
-		//adjustGaussMeanStd(ip);
 		/*
-		byte[] pixels = (byte[])ip.getPixels();
-		int width = ip.getWidth();
-		Rectangle r = ip.getRoi();
+		ImageStatistics ipCopyStats = iPlusCopy.getStatistics();		
+		double mean = ipCopyStats.MEAN;
+		double std = ipCopyStats.STD_DEV;
+		System.out.println("IPCopy:   mean: " + mean + ", std: " + std);
+		*/		
 		
-		int offset, i;
-		
-		for (int y = r.y; y<(r.y+r.height); y++) {
-			offset = y*width;
-			for (int x = r.x; x<(r.x+r.width); x++) {
-				i = offset+x;
-				pixels[i] = (byte) (255-pixels[i]);
-			}
-		}
-		*/
-		
+		/*ResultsTable rt = ResultsTable.getResultsTable();
+		Analyzer an = new Analyzer(iPlusCopy);
+		an.saveResults(*/
 		
 	}
+	
+	private void setSelectedWindow(ImageWindow iw) {
+		WindowManager.setCurrentWindow(iw);
+		while(WindowManager.getCurrentWindow() != iw) {
+			System.out.println("Not changed yet");
+		}
+	}
+			
 	
 	private void adjustGaussMeanStd(ImageProcessor ip) {
 		
@@ -111,11 +110,14 @@ public class AAIterative_ implements PlugInFilter {
 		//but I'm not quite sure how to do that, so will do it here in two steps (threshold, mask) that both need to create their own image.
 		
 		callCount++;
-		System.err.println("Call count is aaa " + callCount);
+		//System.err.println("Call count is aaa " + callCount);
 		byte[] pixels = (byte[]) ip.getPixels();
 		
 		int width = ip.getWidth();
-		Rectangle r = ip.getRoi();
+		int height = ip.getHeight();
+		Rectangle r = new Rectangle(0,0,width,height);
+		System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
+
 		int offset, i;
 		for (int y = r.y; y < (r.y+r.height); y++) {
 			offset = y*width;
