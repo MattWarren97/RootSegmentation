@@ -40,39 +40,26 @@ public class AAIterative_ implements PlugInFilter {
 	//on an image stack, the run method is called on each image in order.
 	public void run(ImageProcessor ip) {
 		
+		callCount++;
 		ipCopy = (ImageProcessor) ip.clone();
 		ipCopy.setPixels(ip.getPixelsCopy());
-		runGaussianMask(ip);
-		medianFilter(ip, MED_RD);
-		applyThreshold(ip, 75, 255);
 		
+		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
+		runGaussianMask(ip);
+		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
+		medianFilter(ip, MED_RD);
+		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
+		applyThreshold(ip, 75, 255);
+		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
 
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
 		
-		//Why does this not work when I comment out these two lines?
-		//Perhaps 'getSelectedWindow' requires that there actually be a window... Oh.
-		
-		/*
-		iPlusCopy.show("iPlusCopy");
-		iPlus.show("iPlus");
-		
-		
-		setSelectedWindow(iPlus.getWindow());
-					
-		Selection sel = new Selection();
-		sel.run("from");
-		sel.run("inverse");
-
-		setSelectedWindow(iPlusCopy.getWindow());
-		sel.run("restore");
-		*/
+		//iPlus.show();
 		
 		Roi selectionRoi = selectFromMask(iPlus);
 		applyRoi(iPlusCopy, selectionRoi);
-		iPlusCopy.show();
-		
-		/*iPlusCopy.show();
+
 		int measurements = Measurements.MEAN + Measurements.STD_DEV;
 		
 		ResultsTable rt = new ResultsTable();
@@ -85,7 +72,7 @@ public class AAIterative_ implements PlugInFilter {
 		gauss_mean = newMean;
 		gauss_std = newStd;
 		System.out.println("Mean: " + newMean + ", Std_dev: " + newStd);
-		*/
+		
 		
 		
 		
@@ -128,10 +115,17 @@ public class AAIterative_ implements PlugInFilter {
 	private Roi selectFromMask(ImagePlus iPlus) {
 		//iPlus.show();
 		ImageProcessor ip = iPlus.getProcessor();
-		if (!ip.isBinary()) {
-			IJ.error("SelectionFromMask", "Image not recognised as binary image, selection from mask impossible");
+		
+		//We are using Fiji 8 with ImageJ 2.0.0.
+		//I can't find sources for ImageJ 2.0.0, only 1.5.
+		//In 1.5 the 'isBinary()' method will always return false.
+		//In 2.0.0 it will seemingly return true sometimes, but not always, and I don't know what the conditions are.
+		
+		//System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
+		/*if (!ip.isBinary()) {
+			IJ.error("SelectionFromMask", "Image not recognised as binary image, selection from mask impossible, on image: " + callCount);
 			return null;
-		}
+		}*/
 		int threshold = ip.isInvertedLut()?0:255;
 		//only values equal to white will be selected.
 		ip.setThreshold(threshold, threshold, ImageProcessor.NO_LUT_UPDATE);
@@ -188,7 +182,7 @@ public class AAIterative_ implements PlugInFilter {
 		//It would be quicker to find the gaussianValue for each pixel, then decide whether it meets the threshold criteria and create the mask pixel by pixel.
 		//but I'm not quite sure how to do that, so will do it here in two steps (threshold, mask) that both need to create their own image.
 		
-		callCount++;
+
 		//System.err.println("Call count is aaa " + callCount);
 		byte[] pixels = (byte[]) ip.getPixels();
 		
