@@ -68,8 +68,9 @@ public class AAIterative_ implements PlugInFilter {
 		sel.run("restore");
 		*/
 		
-		selectFromMask(iPlus);
-		applyPrevSelection(iPlusCopy);
+		Roi selectionRoi = selectFromMask(iPlus);
+		applyRoi(iPlusCopy, selectionRoi);
+		iPlusCopy.show();
 		
 		/*iPlusCopy.show();
 		int measurements = Measurements.MEAN + Measurements.STD_DEV;
@@ -124,12 +125,12 @@ public class AAIterative_ implements PlugInFilter {
 	//method derived from https://imagej.nih.gov/ij/source/ij/plugin/Selection.java
 	//All I've done is rewritten that method to be more convenient [doesn't need an ImageWindow object]
 	
-	private void selectFromMask(ImagePlus iPlus) {
+	private Roi selectFromMask(ImagePlus iPlus) {
 		//iPlus.show();
 		ImageProcessor ip = iPlus.getProcessor();
 		if (!ip.isBinary()) {
 			IJ.error("SelectionFromMask", "Image not recognised as binary image, selection from mask impossible");
-			return;
+			return null;
 		}
 		int threshold = ip.isInvertedLut()?0:255;
 		//only values equal to white will be selected.
@@ -146,7 +147,8 @@ public class AAIterative_ implements PlugInFilter {
 		prepareProcessor(ip, iPlus);
 		tts.run(ip);
 		
-		iPlus.show();
+		Roi selectionRoi = iPlus.getRoi();
+		return selectionRoi;
 		//tts.run(iPlus);
 	}
 	
@@ -172,8 +174,8 @@ public class AAIterative_ implements PlugInFilter {
 		//ip.setCalibrationTable(cTable);
 }
 	
-	private void applyPrevSelection(ImagePlus iPlus) {
-		iPlus.restoreRoi();
+	private void applyRoi(ImagePlus iPlus, Roi roi) {
+		iPlus.setRoi(roi);
 	}
 			
 	
