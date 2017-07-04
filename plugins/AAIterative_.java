@@ -48,8 +48,8 @@ public class AAIterative_ implements PlugInFilter {
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
 		
-		//Why on earth does this not work when I comment out these two lines????
-		//Perhaps 'getSelectedWindow' requires that there actually be a window... Oh no.
+		//Why does this not work when I comment out these two lines?
+		//Perhaps 'getSelectedWindow' requires that there actually be a window... Oh.
 		
 		iPlusCopy.show("iPlusCopy");
 		iPlus.show("iPlus");
@@ -76,6 +76,9 @@ public class AAIterative_ implements PlugInFilter {
 		gauss_mean = newMean;
 		gauss_std = newStd;
 		System.out.println("Mean: " + newMean + ", Std_dev: " + newStd);
+		
+		iPlus.getWindow().close();
+		iPlusCopy.getWindow().close();
 		/*ImageStatistics stats = ImageStatistics.getStatistics(ipCopy, Measurements.MEAN, iPlusCopy.getCalibration());
 		System.out.println("Mean is " + stats.mean);
 		*/
