@@ -10,6 +10,8 @@ import ij.plugin.filter.Analyzer;
 import ij.measure.Measurements;
 import ij.measure.ResultsTable;
 import ij.gui.ImageWindow;
+import ij.plugin.filter.ThresholdToSelection;
+import ij.gui.Roi;
 
 public class AAIterative_ implements PlugInFilter {
 	
@@ -51,6 +53,7 @@ public class AAIterative_ implements PlugInFilter {
 		//Why does this not work when I comment out these two lines?
 		//Perhaps 'getSelectedWindow' requires that there actually be a window... Oh.
 		
+		/*
 		iPlusCopy.show("iPlusCopy");
 		iPlus.show("iPlus");
 		
@@ -63,7 +66,12 @@ public class AAIterative_ implements PlugInFilter {
 
 		setSelectedWindow(iPlusCopy.getWindow());
 		sel.run("restore");
+		*/
 		
+		selectFromMask(iPlus);
+		applyPrevSelection(iPlusCopy);
+		
+		/*iPlusCopy.show();
 		int measurements = Measurements.MEAN + Measurements.STD_DEV;
 		
 		ResultsTable rt = new ResultsTable();
@@ -76,9 +84,18 @@ public class AAIterative_ implements PlugInFilter {
 		gauss_mean = newMean;
 		gauss_std = newStd;
 		System.out.println("Mean: " + newMean + ", Std_dev: " + newStd);
+		*/
 		
+		
+		
+		
+		
+		
+		/*
 		iPlus.getWindow().close();
 		iPlusCopy.getWindow().close();
+		*/
+		
 		/*ImageStatistics stats = ImageStatistics.getStatistics(ipCopy, Measurements.MEAN, iPlusCopy.getCalibration());
 		System.out.println("Mean is " + stats.mean);
 		*/
@@ -95,11 +112,68 @@ public class AAIterative_ implements PlugInFilter {
 		
 	}
 	
+	/*
 	private void setSelectedWindow(ImageWindow iw) {
 		WindowManager.setCurrentWindow(iw);
 		while(WindowManager.getCurrentWindow() != iw) {
 			System.out.println("Not changed yet");
 		}
+	}
+	*/
+	
+	//method derived from https://imagej.nih.gov/ij/source/ij/plugin/Selection.java
+	//All I've done is rewritten that method to be more convenient [doesn't need an ImageWindow object]
+	
+	private void selectFromMask(ImagePlus iPlus) {
+		//iPlus.show();
+		ImageProcessor ip = iPlus.getProcessor();
+		if (!ip.isBinary()) {
+			IJ.error("SelectionFromMask", "Image not recognised as binary image, selection from mask impossible");
+			return;
+		}
+		int threshold = ip.isInvertedLut()?0:255;
+		//only values equal to white will be selected.
+		ip.setThreshold(threshold, threshold, ImageProcessor.NO_LUT_UPDATE);
+		
+		//IJ.runPlugIn("ij.plugin.filter.ThresholdToSelection", "");
+		//Trying to simulate the exact same thing below, but:
+		//my method here doesn't include the line:
+		//'tts.setup(" ", WindowManager.getCurrentImage()) [paraphrased].
+		//I want to be able to just pass in the ImagePlus to use.
+		ThresholdToSelection tts = new ThresholdToSelection();
+		tts.setup("", iPlus);
+		
+		prepareProcessor(ip, iPlus);
+		tts.run(ip);
+		
+		iPlus.show();
+		//tts.run(iPlus);
+	}
+	
+	//I don't know how much of this method is actually required for ThresholdToSelection, but I'll use it all for now.
+	//from https://github.com/imagej/imagej1/blob/master/ij/plugin/filter/PlugInFilterRunner.java
+	private void prepareProcessor(ImageProcessor ip, ImagePlus imp) {
+		ImageProcessor mask = imp.getMask();
+		Roi roi = imp.getRoi();
+		if (roi!=null && roi.isArea())
+			ip.setRoi(roi);
+		else
+			ip.setRoi((Roi)null);
+		if (imp.getStackSize()>1) {
+			ImageProcessor ip2 = imp.getProcessor();
+			double min1 = ip2.getMinThreshold();
+			double max1 = ip2.getMaxThreshold();
+			double min2 = ip.getMinThreshold();
+			double max2 = ip.getMaxThreshold();
+			if (min1!=ImageProcessor.NO_THRESHOLD && (min1!=min2||max1!=max2))
+				ip.setThreshold(min1, max1, ImageProcessor.NO_LUT_UPDATE);
+		}
+		//float[] cTable = imp.getCalibration().getCTable();
+		//ip.setCalibrationTable(cTable);
+}
+	
+	private void applyPrevSelection(ImagePlus iPlus) {
+		iPlus.restoreRoi();
 	}
 			
 	
