@@ -32,6 +32,7 @@ public class AAIterative_ implements PlugInFilter {
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
 
 	public AAIterative_() {
+		System.err.println("Initialising log");
 		callCount = 0;
 		gauss_mean = 85;
 		gauss_std = 4.5;
@@ -40,26 +41,27 @@ public class AAIterative_ implements PlugInFilter {
 	//on an image stack, the run method is called on each image in order.
 	public void run(ImageProcessor ip) {
 		
+		//System.err.println("Ooh look I'm running its me I'm running ooh look");
 		callCount++;
 		ipCopy = (ImageProcessor) ip.clone();
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
-		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
 		runGaussianMask(ip);
-		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
 		medianFilter(ip, MED_RD);
-		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
 		applyThreshold(ip, 75, 255);
-		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
+
 
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
 		
 		//iPlus.show();
-		
+
 		Roi selectionRoi = selectFromMask(iPlus);
+		
 		applyRoi(iPlusCopy, selectionRoi);
 
+
+		
 		int measurements = Measurements.MEAN + Measurements.STD_DEV;
 		
 		ResultsTable rt = new ResultsTable();
@@ -71,10 +73,11 @@ public class AAIterative_ implements PlugInFilter {
 		
 		gauss_mean = newMean;
 		gauss_std = newStd;
-		System.out.println("Mean: " + newMean + ", Std_dev: " + newStd);
+		System.out.println("Image: " + callCount + ", Mean: " + newMean + ", Std_dev: " + newStd);
 		
 		
-		
+		iPlusCopy.deleteRoi();
+		iPlus.deleteRoi();
 		
 		
 		
@@ -116,19 +119,28 @@ public class AAIterative_ implements PlugInFilter {
 		//iPlus.show();
 		ImageProcessor ip = iPlus.getProcessor();
 		
+		//System.err.println("Image: " + callCount + ", Binary: " + ip.isBinary());
+		
+		
+		
 		//We are using Fiji 8 with ImageJ 2.0.0.
 		//I can't find sources for ImageJ 2.0.0, only 1.5.
 		//In 1.5 the 'isBinary()' method will always return false.
 		//In 2.0.0 it will seemingly return true sometimes, but not always, and I don't know what the conditions are.
+		//actually, it appears the images were not binary...
 		
-		//System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
-		/*if (!ip.isBinary()) {
+		
+		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
+		if (!ip.isBinary()) {
 			IJ.error("SelectionFromMask", "Image not recognised as binary image, selection from mask impossible, on image: " + callCount);
 			return null;
-		}*/
+		}
+		
+
 		int threshold = ip.isInvertedLut()?0:255;
 		//only values equal to white will be selected.
 		ip.setThreshold(threshold, threshold, ImageProcessor.NO_LUT_UPDATE);
+		
 		
 		//IJ.runPlugIn("ij.plugin.filter.ThresholdToSelection", "");
 		//Trying to simulate the exact same thing below, but:
@@ -138,12 +150,14 @@ public class AAIterative_ implements PlugInFilter {
 		ThresholdToSelection tts = new ThresholdToSelection();
 		tts.setup("", iPlus);
 		
-		prepareProcessor(ip, iPlus);
-		tts.run(ip);
 		
+		prepareProcessor(ip, iPlus);
+		System.out.println("Min: " + ip.getMinThreshold() + ", max: " + ip.getMaxThreshold());
+		
+		tts.run(ip);
+
 		Roi selectionRoi = iPlus.getRoi();
 		return selectionRoi;
-		//tts.run(iPlus);
 	}
 	
 	//I don't know how much of this method is actually required for ThresholdToSelection, but I'll use it all for now.
@@ -189,7 +203,7 @@ public class AAIterative_ implements PlugInFilter {
 		int width = ip.getWidth();
 		int height = ip.getHeight();
 		Rectangle r = new Rectangle(0,0,width,height);
-		System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
+		//System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
 
 		int offset, i;
 		for (int y = r.y; y < (r.y+r.height); y++) {
@@ -197,7 +211,6 @@ public class AAIterative_ implements PlugInFilter {
 			for (int x = r.x; x < (r.x+r.width); x++) {
 				i = offset+x;
 				double newValue = Math.floor((Math.exp(-((Math.pow(pixels[i]-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
-
 				int newInt = (int) newValue;
 				byte newByte = (byte) newInt;
 				pixels[i] = newByte;
@@ -208,13 +221,13 @@ public class AAIterative_ implements PlugInFilter {
 		
 	}
 	
-	private void applyThreshold(ImageProcessor ip, int lowGaussianLimit, int highGaussianLimit) {
-		//ip.resetBinaryThreshold(); //copying some linesf rom the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
+	private void applyThreshold(ImageProcessor ip, int lowLimit, int highLimit) {
+		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
 		int[] lut = new int[256];
 		int whiteColor = 255;
 		int blackColor = 0;
 		for (int i = 0; i < 256; i++) {
-			if (i>=lowGaussianLimit  && i <= highGaussianLimit) {
+			if (i>=lowLimit  && i <= highLimit) {
 				lut[i] = whiteColor;
 			}
 			else {
