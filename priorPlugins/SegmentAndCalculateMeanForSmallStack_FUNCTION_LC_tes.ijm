@@ -216,8 +216,8 @@ Z=300;
 //run("Raw...", "open="+RAW_image_path+" image=8-bit width="+X+" height="+Y+" number="+Z+" little-endian");
 //rename("OriginalStack1")
 //run("Duplicate...", "title=OriginalStack duplicate");
-init_mean=89.6;
-init_std=4;
+init_mean=113;
+init_std=4.5;
 med_size=5;
 rm_out=4;
 //centre=SegmentAndCalculateMean("OriginalStack",X,Y,Z,init_mean,init_std,rm_out,med_size);
@@ -226,7 +226,7 @@ rm_out=4;
 //test Z_PROJ
 //Z_PROJ("Mask",8,4,centre) 
 
-SD_Array = newArray(4,5,6);
+SD_Array = newArray(init_std,5,6);
 Erode_Array=newArray(19,7,3);
 max_std = newArray(8,9,10);
 setBatchMode(false);
