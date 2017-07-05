@@ -20,10 +20,10 @@ public class AAIterative_ implements PlugInFilter {
 	static final int X = 500;
 	static final int Y = 500;
 	static final int Z = 300;
-	static final int RM_OUT_FILTER = 4;
-	static final int[] SD_ARRAY = {4, 5, 6};
-	static final int[] ERODE_ARRAY = {19,7,3};
-	static final int[] MAX_STD = {8, 9, 10};
+	//static final int RM_OUT_FILTER = 4;
+	//static final int[] SD_ARRAY = {4, 5, 6};
+	//static final int[] ERODE_ARRAY = {19,7,3};
+	//static final int[] MAX_STD = {8, 9, 10};
 	int callCount;
 	double gauss_mean;
 	double gauss_std;
@@ -34,7 +34,7 @@ public class AAIterative_ implements PlugInFilter {
 	public AAIterative_() {
 		System.err.println("Initialising log");
 		callCount = 0;
-		gauss_mean = 85;
+		gauss_mean = 113;
 		gauss_std = 4.5;
 	}
 
@@ -73,10 +73,10 @@ public class AAIterative_ implements PlugInFilter {
 		
 		gauss_mean = newMean;
 		gauss_std = newStd;
-		if (gauss_std > 10) {
-			gauss_std = 10;
-		}
-		System.out.println("Image: " + callCount + ", Mean: " + newMean + ", Std_dev: " + newStd);
+		//if (gauss_std > 4.5) {
+			gauss_std = 4.5;
+		//}
+		System.out.println("Image: " + callCount + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
 		
 		
 		iPlusCopy.deleteRoi();
