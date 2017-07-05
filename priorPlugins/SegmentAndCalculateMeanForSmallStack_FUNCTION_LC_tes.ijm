@@ -11,8 +11,8 @@ function SegmentAndCalculateMean(image_name,X,Y,Z,init_mean,init_std,rm_out,med_
 
 	selectWindow(image_name);	
 	rename("OriginalStack");
-	//extra_X = X+med_size;
-	//extra_Y = Y+med_size;
+	extra_X = X+med_size;
+	extra_Y = Y+med_size;
 	run("Canvas Size...", "width="+extra_X+" height="+extra_Y+" position=Center zero");
 	run("Set Measurements...", "mean standard limit redirect=None decimal=3");
 	selectWindow("OriginalStack");

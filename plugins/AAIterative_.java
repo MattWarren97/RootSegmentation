@@ -73,6 +73,9 @@ public class AAIterative_ implements PlugInFilter {
 		
 		gauss_mean = newMean;
 		gauss_std = newStd;
+		if (gauss_std > 10) {
+			gauss_std = 10;
+		}
 		System.out.println("Image: " + callCount + ", Mean: " + newMean + ", Std_dev: " + newStd);
 		
 		
