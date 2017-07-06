@@ -41,6 +41,9 @@ function SegmentAndCalculateMean(image_name,X,Y,Z,init_mean,init_std,rm_out,med_
 
 	run("Clear Results");
 	run("Remove Outliers...", "radius="+rm_out+" threshold=50 which=Bright slice");
+	//doing remove outliers here is surely the same thing as applying another median filter - the image is already binary,
+	//so the median it compares with is 0 or 255, and its value is 255 - the threshold is irrelevant.
+	
 	run("Find Maxima...", "noise=0 output=List"); //Results now has location of white
 	non_zeroX= getResult("X",0);
 	non_zeroY=getResult("Y",0);
