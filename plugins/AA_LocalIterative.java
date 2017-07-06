@@ -490,6 +490,8 @@ public class AA_LocalIterative implements PlugInFilter {
                     pict[arrayIndex]=PixVal;
 					if (PixVal>ThrVal){
 						thr[arrayIndex]=true;
+						//TODO The current problem is that the black '0 space' is being counted.
+						// I need to work uot why and stop it from being counted / stop it from being able to be the closest bit.
                     }
                     arrayIndex++;
                 }
