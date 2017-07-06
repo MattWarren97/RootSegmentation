@@ -14,6 +14,7 @@ import ij.plugin.filter.ThresholdToSelection;
 import ij.gui.Roi;
 import ij.plugin.filter.EDM;
 import ij.gui.OvalRoi;
+import ij.measure.Calibration;
 
 public class AA_LocalIterative implements PlugInFilter {
 	
@@ -42,6 +43,13 @@ public class AA_LocalIterative implements PlugInFilter {
 	Roi focusArea;
 	
 	
+	//these variables are from Object_Counter3D - but are used in multiple methods.
+	int[] tag;
+	int Width;
+	int Height;
+	int NbSlices;
+	
+	
 	public AA_LocalIterative() {
 		System.err.println("Initialising log");
 		callCount = 0;
@@ -55,12 +63,15 @@ public class AA_LocalIterative implements PlugInFilter {
 		xStart = 218;
 		yStart = 298;
 		zStart = 92;
-		*/
-		
-		
+		*/		
 	}
 
 	public void run(ImageProcessor ip) {
+		ImagePlus iPlus = new ImagePlus("ip", ip);
+		Roi selectionRoi = selectCentralObject(iPlus);
+		iPlus.show();
+	}
+	/*public void run(ImageProcessor ip) {
 		
 		if (callCount == 0) {
 			//get the user to select an inital location (and slice) of a root leaving the stem.
@@ -111,7 +122,8 @@ public class AA_LocalIterative implements PlugInFilter {
 			Thread.sleep(4000);
 		} catch(Exception e) {}
 		
-		Roi selectionRoi = selectFromMask(iPlus);
+		//Roi selectionRoi = selectFromMask(iPlus);
+		Roi selectionRoi = selectCentralObject(iPlus);
 		applyRoi(iPlusCopy, selectionRoi);
 		
 		int measurements = Measurements.MEAN + Measurements.STD_DEV;
@@ -137,7 +149,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		iPlusCopy.deleteRoi();
 		iPlus.deleteRoi();
 		
-	}
+	}*/
 		
 	//method copied across from https://imagej.nih.gov/ij/developer/source/ij/plugin/RoiEnlarger.java.html
 	private Roi enlargeRoi(Roi roi) {
@@ -423,14 +435,20 @@ public class AA_LocalIterative implements PlugInFilter {
 	}
 	
 	//lines modified from https://imagej.nih.gov/ij/plugins/track/Object_Counter3D.java
-	private void objectCounter(ImagePlus iPlus) {
+	private Roi selectCentralObject(ImagePlus iPlus) {
 		ImageProcessor ip = iPlus.getProcessor();
         int x, y, z;
         int xn, yn, zn;
         int i, j, k, arrayIndex, offset;
         int voisX = -1, voisY = -1, voisZ = -1;
+		Width = iPlus.getWidth();
+		Height = iPlus.getHeight();
+		NbSlices = iPlus.getStackSize(); //TODO do I want this to be larger than 1 ever?? I think not.
         int maxX = Width-1, maxY=Height-1;
 
+		int minSize = 10;
+		int maxSize = Width*Height;
+		
         int index;
         int val;
         double col;
@@ -438,9 +456,10 @@ public class AA_LocalIterative implements PlugInFilter {
         int minTag;
         int minTagOld;
 
-        cal = img.getCalibration();
+		Calibration cal;
+        cal = iPlus.getCalibration();
         if (cal == null ) {
-            cal = new Calibration(img);
+            cal = new Calibration(iPlus);
         }
         double pixelDepth = cal.pixelDepth;
         double pixelWidth = cal.pixelWidth;
@@ -450,26 +469,27 @@ public class AA_LocalIterative implements PlugInFilter {
         double xOrigin = cal.xOrigin;
         double voxelSize = pixelDepth * pixelWidth * pixelHeight;
 
-        pict=new int [Height*Width*NbSlices];
-        thr=new boolean [Height*Width*NbSlices];
+        int[] pict=new int [Height*Width*NbSlices];
+        boolean[] thr=new boolean [Height*Width*NbSlices];
         tag=new int [Height*Width*NbSlices];
-        surf=new boolean [Height*Width*NbSlices];
+        boolean[] surf=new boolean [Height*Width*NbSlices];
         Arrays.fill(thr,false);
         Arrays.fill(surf,false);
 
         //Load the image in a one dimension array
 		
 		//ME: I'm pretty sure this could be done with ip.getPixels();
-        ImageStack stack = img.getStack();
+        ImageStack stack = iPlus.getStack();
         arrayIndex=0;
+		int ThrVal = 1;
         for (z=1; z<=NbSlices; z++) {
             ip = stack.getProcessor(z);
             for (y=0; y<Height;y++) {
                 for (x=0; x<Width;x++) {
-                    PixVal=ip.getPixel(x, y);
+                    int PixVal=ip.getPixel(x, y);
                     pict[arrayIndex]=PixVal;
-                    if (PixVal>ThrVal){
-                        thr[arrayIndex]=true;
+					if (PixVal>ThrVal){
+						thr[arrayIndex]=true;
                     }
                     arrayIndex++;
                 }
@@ -482,7 +502,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		
         //First ID attribution
         int tagvois;
-        ID=1;
+        int ID=1;
         arrayIndex=0;
         for (z=1; z<=NbSlices; z++){
             for (y=0; y<Height; y++){
@@ -563,7 +583,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		//0:volume; 1:surface; 2:intensity; 3:barycenter x; 4:barycenter y; 
 		//5:barycenter z; 6:barycenter x int; 7:barycenter y int; 8:barycenter z int
         arrayIndex=0;
-        Paramarray=new double [ID][9]; //ME: ID == the number of different structures
+        double[][] Paramarray=new double [ID][9]; //ME: ID == the number of different structures
         for (z=1; z<=NbSlices; z++){
             for (y=0; y<Height; y++){
                 for (x=0; x<Width; x++){
@@ -600,8 +620,11 @@ public class AA_LocalIterative implements PlugInFilter {
                     Paramarray[i][7] /= intensity; // ""y
                     Paramarray[i][8] /= intensity; // ""z
                 }
+				System.out.println("Object with ID: " + i + ", had " + Paramarray[i][0] + " pixels. Max is " + maxSize);
             } else {
-                for (j=0;j<9;j++) Paramarray[i][j]=0;
+				System.out.println("Object with ID: " + i + ", had " + Paramarray[i][0] + " pixels. Min is " + minSize);
+
+                for (j=0;j<9;j++) Paramarray[i][j]=-1;
             }
         }
 
@@ -610,189 +633,80 @@ public class AA_LocalIterative implements PlugInFilter {
 		//ME: Here, I can find the results and use them!!!
 		//Need to find the most central structure (with means) -- 
 		//then need to go through and find a way to change the selection to be just that structure.
-        rt = new ResultsTable();
-        IDarray=new int[ID];
-
-        String[] head={"Volume","Surface","Intensity","Centre X","Centre Y","Centre Z","Centre int X","Centre int Y","Centre int Z"};
-        for (i=0; i<head.length; i++) rt.setHeading(i,head[i]);
-
-        k=1;
-        for (i=1;i<ID;i++){
-            if (Paramarray[i][0]!=0){
-                rt.incrementCounter();
-                IDarray[i]=k;
-                voxCount = Paramarray[i][0];
-                rt.addValue(0,voxCount * voxelSize);
-                rt.addValue(1,Paramarray[i][1] / voxCount);
-                rt.addValue(2,Paramarray[i][2]);
-                rt.addValue(3,cal.getX(Paramarray[i][3]));
-                rt.addValue(4,cal.getY(Paramarray[i][4]));
-                rt.addValue(5,cal.getZ(Paramarray[i][5]-1));
-                rt.addValue(6,cal.getX(Paramarray[i][6]));
-                rt.addValue(7,cal.getY(Paramarray[i][7]));
-                rt.addValue(8,cal.getZ(Paramarray[i][8]-1));
-                k++;
-            }
-        }
-		rt.show("Results");
-
-        int nParticles = rt.getCounter();
-
-        /*if (showParticles){ // Create 'Particles' image
-            Particles=NewImage.createShortImage("Particles "+imgtitle,Width,Height,NbSlices,0);
-            stackParticles=Particles.getStack();
-            Particles.setCalibration(cal);
-            arrayIndex=0;
-            for (z=1; z<=NbSlices; z++){
-                ip=stackParticles.getProcessor(z);
-                for (y=0; y<Height; y++){
-                    for (x=0; x<Width; x++){
-                        if (thr[arrayIndex]) {
-                            index=tag[arrayIndex];
-                            if (Paramarray[index][0]>0){//(Paramarray[index][0]>=minSize && Paramarray[index][0]<=maxSize)
-                                col=IDarray[index]+1;
-                                ip.setValue(col);
-                                ip.drawPixel(x, y);
-                            }
-                        }
-                        arrayIndex++;
-                    }
-                }
-            }
-            Particles.show();
-            IJ.run("Fire");
-        }*/
-
-        /*if (showEdges){ // Create 'Edges' image
-            Edges=NewImage.createShortImage("Edges "+imgtitle,Width,Height,NbSlices,0);
-            stackEdges=Edges.getStack();
-            Edges.setCalibration(cal);
-            arrayIndex=0;
-            for (z=1; z<=NbSlices; z++){
-                ip=stackEdges.getProcessor(z);
-                for (y=0; y<Height; y++){
-                    for (x=0; x<Width; x++){
-                        if (thr[arrayIndex]) {
-                            index=tag[arrayIndex];
-                            if (Paramarray[index][0]>0 && surf[arrayIndex]) {
-                                col=IDarray[index]+1;
-                                ip.setValue(col);
-                                ip.drawPixel(x, y);
-                            }
-                        }
-                        arrayIndex++;
-                    }
-                }
-            }
-            Edges.show();
-            IJ.run("Fire");
-        }*/
-
-        if (showCentres){ // Create 'Centres' image
-            Centres=NewImage.createShortImage("Geometrical Centres "+imgtitle,Width,Height,NbSlices,0);
-            stackCentres=Centres.getStack();
-            Centres.setCalibration(cal);
-            for (i=0;i<nParticles;i++){
-                ip=stackCentres.getProcessor((int)Math.round(rt.getValue(5,i)/pixelDepth+zOrigin+1));
-                ip.setValue(i+1);
-                ip.setLineWidth(DotSize);
-                ip.drawDot((int)Math.round(rt.getValue(3,i)/pixelWidth+xOrigin), (int)Math.round(rt.getValue(4,i)/pixelHeight+yOrigin));
-            }
-            Centres.show();
-            IJ.run("Fire");
-        }
-
-        /*if (showCentresInt){ // Create 'Intensity weighted Centres' image
-            CentresInt=NewImage.createShortImage("Intensity based centres "+imgtitle,Width,Height,NbSlices,0);
-            stackCentresInt=CentresInt.getStack();
-            CentresInt.setCalibration(cal);
-            for (i=0;i<nParticles;i++){
-                ip=stackCentresInt.getProcessor((int)Math.round(rt.getValue(8,i)/pixelDepth+zOrigin+1));
-                ip.setValue(i+1);
-                ip.setLineWidth(DotSize);
-                ip.drawDot((int)Math.round(rt.getValue(6,i)/pixelWidth+xOrigin), (int)Math.round(rt.getValue(7,i)/pixelHeight+yOrigin));
-            }
-            CentresInt.show();
-            IJ.run("Fire");
-        }*/
-
-        //"Volume","Surface","Intensity","Centre X","Centre Y","Centre Z","Centre int X","Centre int Y","Centre int Z"
-
-        /*if (showNumbers){
-            Font font = new Font("SansSerif", Font.PLAIN, FontSize);
-            for (i=0;i<nParticles;i++){
-                z = (int)Math.round(rt.getValue(5,i)/pixelDepth+zOrigin+1);
-                y = (int)Math.round(rt.getValue(4,i)/pixelHeight+yOrigin);
-                x = (int)Math.round(rt.getValue(3,i)/pixelWidth+xOrigin);
-                if (debug) IJ.log(pluginName + " Draw pixels: slice=" + z + " coords" + x + "," + y);
-                if (showParticles){
-                    ip=stackParticles.getProcessor(z);
-                    ip.setFont(font);
-                    ip.setValue(nParticles);
-                    ip.drawString(""+(i+1),x,y);
-                }
-                if (showEdges){
-                    ip=stackEdges.getProcessor(z);
-                    ip.setFont(font);
-                    ip.setValue(nParticles);
-                    ip.drawString(""+(i+1),x,y);
-                }
-                if (showCentres){
-                    ip=stackCentres.getProcessor(z);
-                    ip.setFont(font);
-                    ip.setValue(nParticles);
-                    ip.drawString(""+(i+1),x,y);
-                }
-                if (showCentresInt){
-                    ip=stackCentresInt.getProcessor(z);
-                    ip.setFont(font);
-                    ip.setValue(nParticles);
-                    ip.drawString(""+(i+1),x,y);
-                }
-                IJ.showStatus("Drawing numbers");
-                IJ.showProgress(i,nParticles);
-            }
-        }*/
-
-        /*if (showParticles){
-            Particles.getProcessor().setMinAndMax(1,nParticles);
-            Particles.updateAndDraw();
-        }
-
-        if (showEdges){
-            Edges.getProcessor().setMinAndMax(1,nParticles);
-            Edges.updateAndDraw();
-        }*/
-
-        if (showCentres){
-            Centres.getProcessor().setMinAndMax(1,nParticles);
-            Centres.updateAndDraw();
-        }
-
-        /*if (showCentresInt){
-            CentresInt.getProcessor().setMinAndMax(1,nParticles);
-            CentresInt.updateAndDraw();
-        }
-
-        if (summary){
-            double TtlVol=0;
-            double TtlSurf=0;
-            double TtlInt=0;
-            for (i=0; i<nParticles;i++){
-                TtlVol+=rt.getValueAsDouble(0,i);
-                TtlSurf+=rt.getValueAsDouble(1,i);
-                TtlInt+=rt.getValueAsDouble(2,i); //
-            }
-            int precision = Analyzer.precision;
-            IJ.log(imgtitle);
-            IJ.log("Number of Objects = " + nParticles);
-            IJ.log("Mean Volume = " + IJ.d2s(TtlVol/nParticles,precision));
-            IJ.log("Mean Surface Fraction = " + IJ.d2s(TtlSurf/nParticles,precision));
-            IJ.log("Mean Intensity = " + IJ.d2s(TtlInt/nParticles,precision));
-            IJ.log("Voxel Size = " + IJ.d2s(voxelSize));
-        }*/
+		
+		//my code.
+		double[] distanceFromCenter = new double[ID];
+		Rectangle r = focusArea.getBounds();
+		
+		double originalCenterX = r.getX() + r.getWidth()/2;
+		double originalCenterY = r.getY() + r.getHeight()/2;
+		System.out.println("Original center is at " + originalCenterX + ", " + originalCenterY);
+		for (int i1 = 0; i1 < ID; i1++) {
+			int centerX = new Double(Paramarray[i1][3]).intValue();
+			int centerY = new Double(Paramarray[i1][4]).intValue();
+			if (centerX == -1 || centerY == -1) {
+				distanceFromCenter[i1] = -1;
+				continue;
+			}
+			System.out.println("One object " + i1 + ", has center at " + centerX + "," + centerY);
+			distanceFromCenter[i1] = Math.sqrt(Math.pow(centerX - originalCenterX, 2) + Math.pow(centerY - originalCenterY, 2));
+		}
+		
+		int closestIDToCenter = 0;
+		double closestDistance = distanceFromCenter[0];
+		for (int i2 = 1; i2 < ID; i2++) {
+			if (distanceFromCenter[i2] == -1) {
+				continue;
+			}
+			if (distanceFromCenter[i2] <= closestDistance) {
+				if (distanceFromCenter[i2] == closestDistance) {
+					System.out.println("Two objects have the same distance from the mean - incredible - value is " + closestDistance);
+					System.out.println("Width: " + Width + ", Height: " + Height + ", " + distanceFromCenter[0] + ", " + distanceFromCenter[1]);
+				}
+				else {
+					closestIDToCenter = i2;
+					closestDistance = distanceFromCenter[i2];
+				}
+			}
+		}
+		
+		//closestIDToCenter is now the ID of the structure closest to the mean.
+		//need to create a selection containing only the pixels in this structure.
+		for (int i3 = 0; i3 < pict.length; i3++) {
+			int whiteColor = 255;
+			int blackColor = 0;
+			if (tag[i3] == closestIDToCenter) {
+				pict[i3] = whiteColor;
+			}
+			else {
+				pict[i3] = blackColor;
+			}
+		}
+		byte[] pixels = new byte[pict.length];
+		for (int i4 = 0; i4 < pict.length; i4++) {
+			pixels[i4] = (byte) pict[i4];
+		}
+		ip.setPixels(pixels);
+		Roi selectionRoi = selectFromMask(iPlus);
+		
+		return selectionRoi;
     }
 		
+	//also from Object_Counter3D
+	public boolean withinBounds(int m,int n,int o) {
+        return (m >= 0 && m < Width && n >=0 && n < Height && o > 0 && o <= NbSlices );
+    }
+	
+	//also from Object_Counter3D
+	public int offset(int m,int n,int o) {
+        return m+n*Width+(o-1)*Width*Height;
+    }
+	
+	//also from Object_Counter3D
+	public void replacetag(int m,int n){
+        for (int i=0; i<tag.length; i++) if (tag[i]==m) tag[i]=n;
+    }
+	
 	
 	
 	void showAbout() {
