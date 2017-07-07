@@ -2,3 +2,4 @@ JavaCopyOfLauraDanMacro/
 *.tif
 *.db
 *.raw
+plugins/javaTest*
