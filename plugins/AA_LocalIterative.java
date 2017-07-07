@@ -59,12 +59,20 @@ public class AA_LocalIterative implements PlugInFilter {
 		callCount = 0;
 		prevArea = 0;
 		
+		//bottom right - mostly works well.
+		gauss_mean = 84;
+		xStart = 269;
+		yStart = 305;
+		zStart = 82;
+		focusArea = new Roi(new Rectangle(0, 0, 15, 22));
+		
+		
 		//top left - works very well
-		gauss_mean = 85;
-		xStart = 235;
-		yStart = 222;
-		focusArea = new Roi(new Rectangle(0, 0, 17, 13));
-		zStart = 98;
+		//gauss_mean = 85;
+		//xStart = 235;
+		//yStart = 222;
+		//focusArea = new Roi(new Rectangle(0, 0, 17, 13));
+		//zStart = 98;
 		
 		//bottom left - works not too badly
 		//gauss_mean = 85;
@@ -73,7 +81,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		//yStart = 298;
 		//zStart = 92;
 		
-		//long one - works terribly
+		//top right, long shape - works terribly
 		//gauss_mean = 104;
 		//focusArea = new Roi(new Rectangle(0, 0, 31, 12));
 		//xStart = 329;
