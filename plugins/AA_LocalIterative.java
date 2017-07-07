@@ -38,6 +38,8 @@ public class AA_LocalIterative implements PlugInFilter {
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
+	ImageProcessor fullSize;
+	
 	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
 	Roi focusArea;
@@ -53,12 +55,13 @@ public class AA_LocalIterative implements PlugInFilter {
 	public AA_LocalIterative() {
 		System.err.println("Initialising log");
 		callCount = 0;
-		gauss_mean = 104;
+		//gauss_mean = 104;
 		gauss_std = 6;
 		//focusArea = new Roi(new Rectangle(0, 0, 31, 12));
 		//xStart = 329;
 		//yStart = 181;
 		//zStart = 169;
+		gauss_mean = 85;
 		focusArea = new Roi(new Rectangle(0, 0, 22, 22));
 		xStart = 218;
 		yStart = 298;
@@ -89,7 +92,11 @@ public class AA_LocalIterative implements PlugInFilter {
 
 		//make adjustments to ROI to allow for changing location of root.
 		focusArea.setLocation(xStart, yStart);
-		focusArea = enlargeRoi(focusArea);
+		try {
+			focusArea = enlargeRoi(focusArea);
+		} catch (Exception e) {
+			System.err.println("Selection on image " + callCount + " was too small to enlarge -- exception thrown");
+		}
 		//System.out.println("X: " + focusArea.getXBase() + ", Y: " + focusArea.getYBase());
 		//Rectangle r = focusArea.getBounds();
 		
@@ -101,7 +108,8 @@ public class AA_LocalIterative implements PlugInFilter {
 		//System.out.println("focusArea updated- X: " + ((int) r.getX()) + ", Y: " + ((int) r.getY()) + ", Width: " + ((int) r.getWidth()) + ", Height: " + ((int) r.getHeight()));
 		System.out.println("focusArea updated");
 		
-		
+		fullSize = (ImageProcessor) ip.clone();
+		fullSize.setPixels(ip.getPixelsCopy());
 		ip.setRoi(focusArea);
 		
 		ip = ip.crop();
@@ -116,11 +124,11 @@ public class AA_LocalIterative implements PlugInFilter {
 		//medianFilter(ip, MED_RD);
 		
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
-		iPlus.show();
+		//iPlus.show();
 		
 		//Roi selectionRoi = selectFromMask(iPlus);
 		Roi selectionRoi = selectCentralObject(iPlus);
-		applyRoi(iPlusCopy, selectionRoi);
+		applyRoi(iPlusCopy, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
 		
 		int measurements = Measurements.MEAN + Measurements.STD_DEV;
 		
@@ -144,7 +152,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		iPlus.deleteRoi();
 		
 		try {
-			Thread.sleep(4000);
+			//Thread.sleep(500);
 		} catch(Exception e) {}
 		
 	}
@@ -211,7 +219,7 @@ public class AA_LocalIterative implements PlugInFilter {
 				selectedCount++;
 			}
 		}
-		System.out.println("selected count is " + selectedCount);
+		System.out.println("selectFromMask, selected count is " + selectedCount);
 		
 		
 		//We are using Fiji 8 with ImageJ 2.0.0.
@@ -273,7 +281,8 @@ public class AA_LocalIterative implements PlugInFilter {
 		//ip.setCalibrationTable(cTable);
 }
 	
-	private void applyRoi(ImagePlus iPlus, Roi roi) {
+	private void applyRoi(ImagePlus iPlus, Roi roi, int xOffset, int yOffset) {
+		roi.setLocation(xOffset, yOffset);
 		iPlus.setRoi(roi);
 	}
 			
@@ -441,6 +450,14 @@ public class AA_LocalIterative implements PlugInFilter {
 	//lines modified from https://imagej.nih.gov/ij/plugins/track/Object_Counter3D.java
 	private Roi selectCentralObject(ImagePlus iPlus) {
 		ImageProcessor ip = iPlus.getProcessor();
+		int selectedCount = 0;
+		byte[] pixs = (byte[]) ip.getPixels();
+		for (int i = 0; i < pixs.length; i++) {
+			if (pixs[i] == -1) {
+				selectedCount++;
+			}
+		}
+		System.out.println("selectCentralObject, selected count is " + selectedCount);
         int x, y, z;
         int xn, yn, zn;
         int i, j, k, arrayIndex, offset;
