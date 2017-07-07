@@ -37,6 +37,7 @@ public class AA_LocalIterative implements PlugInFilter {
 	int callCount;
 	double gauss_mean;
 	double gauss_std;
+	double prevArea;
 	ImageProcessor ipCopy;
 	ImageProcessor ipCopy2;
 	
@@ -54,18 +55,20 @@ public class AA_LocalIterative implements PlugInFilter {
 	
 	public AA_LocalIterative() {
 		System.err.println("Initialising log");
-		callCount = 0;
-		//gauss_mean = 104;
 		gauss_std = 6;
-		//focusArea = new Roi(new Rectangle(0, 0, 31, 12));
-		//xStart = 329;
-		//yStart = 181;
-		//zStart = 169;
-		gauss_mean = 85;
-		focusArea = new Roi(new Rectangle(0, 0, 22, 22));
-		xStart = 218;
-		yStart = 298;
-		zStart = 92;
+		callCount = 0;
+		prevArea = 0;
+		
+		gauss_mean = 104;
+		focusArea = new Roi(new Rectangle(0, 0, 31, 12));
+		xStart = 329;
+		yStart = 181;
+		zStart = 169;
+		//gauss_mean = 85;
+		//focusArea = new Roi(new Rectangle(0, 0, 22, 22));
+		//xStart = 218;
+		//yStart = 298;
+		//zStart = 92;
 	}
 /*
 	public void run(ImageProcessor ip) {
@@ -130,7 +133,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		Roi selectionRoi = selectCentralObject(iPlus);
 		applyRoi(iPlusCopy, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
 		
-		int measurements = Measurements.MEAN + Measurements.STD_DEV;
+		int measurements = Measurements.MEAN + Measurements.STD_DEV + Measurements.AREA;
 		
 		ResultsTable rt = new ResultsTable();
 		Analyzer an = new Analyzer(iPlusCopy, measurements, rt);
@@ -138,10 +141,14 @@ public class AA_LocalIterative implements PlugInFilter {
 		an.measure();
 		double newMean = rt.getValue("Mean", rt.getCounter()-1);
 		double newStd = rt.getValue("StdDev", rt.getCounter()-1);
+		double area = rt.getValue("Area", rt.getCounter()-1);
+		System.out.println("AREA is " + area);
 		
 		gauss_mean = newMean;
 
 		System.out.println("Image: " + callCount + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
+		System.out.println("Image: " + callCount + ", Area: " + area + " change: " + (area-prevArea) + ", as percentage: " + Math.abs((area-prevArea)/prevArea));
+		prevArea = area;
 		
 		//displaying the changes on the imageprocessor that was passed in.
 		Roi offsetRoi = (Roi) selectionRoi.clone();
@@ -163,10 +170,6 @@ public class AA_LocalIterative implements PlugInFilter {
 
 		iPlusCopy.deleteRoi();
 		iPlus.deleteRoi();
-		
-		try {
-			//Thread.sleep(500);
-		} catch(Exception e) {}
 		
 	}
 		
