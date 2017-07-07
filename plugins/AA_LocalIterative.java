@@ -38,7 +38,7 @@ public class AA_LocalIterative implements PlugInFilter {
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
-	ImageProcessor fullSize;
+	ImageProcessor ipCopy2;
 	
 	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
@@ -108,22 +108,22 @@ public class AA_LocalIterative implements PlugInFilter {
 		//System.out.println("focusArea updated- X: " + ((int) r.getX()) + ", Y: " + ((int) r.getY()) + ", Width: " + ((int) r.getWidth()) + ", Height: " + ((int) r.getHeight()));
 		System.out.println("focusArea updated");
 		
-		fullSize = (ImageProcessor) ip.clone();
-		fullSize.setPixels(ip.getPixelsCopy());
-		ip.setRoi(focusArea);
+		ipCopy2 = (ImageProcessor) ip.clone();
+		ipCopy2.setPixels(ip.getPixelsCopy());
+		ipCopy2.setRoi(focusArea);
 		
-		ip = ip.crop();
+		ipCopy2 = ipCopy2.crop();
 				
-		ipCopy=(ImageProcessor) ip.clone();
-		ipCopy.setPixels(ip.getPixelsCopy());
+		ipCopy=(ImageProcessor) ipCopy2.clone();
+		ipCopy.setPixels(ipCopy2.getPixelsCopy());
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
 
-		runGaussianMask(ip);
-		medianFilter(ip, MED_RD);
-		applyThreshold(ip, 75, 255);
+		runGaussianMask(ipCopy2);
+		medianFilter(ipCopy2, MED_RD);
+		applyThreshold(ipCopy2, 75, 255);
 		//medianFilter(ip, MED_RD);
 		
-		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
+		ImagePlus iPlus = new ImagePlus("ip" + callCount, ipCopy2);
 		//iPlus.show();
 		
 		//Roi selectionRoi = selectFromMask(iPlus);
@@ -143,11 +143,24 @@ public class AA_LocalIterative implements PlugInFilter {
 
 		System.out.println("Image: " + callCount + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
 		
+		//displaying the changes on the imageprocessor that was passed in.
+		Roi offsetRoi = (Roi) selectionRoi.clone();
+		offsetRoi.setLocation(xStart, yStart);
+		try {
+			ip.setRoi(offsetRoi);
+		} catch (Exception e) {
+			System.err.println("Width and Height were probably 0..., on image " + callCount);
+		}
+		ip.setColor(Color.WHITE);
+		ip.fill();
+
+		
 		focusArea = selectionRoi;
 		System.out.println("new focus area was- X: " + ((int) focusArea.getXBase()) + ", Y: " + ((int) focusArea.getYBase()));
 		xStart -= (ENLARGE_FACTOR-focusArea.getXBase());
 		yStart -= (ENLARGE_FACTOR-focusArea.getYBase());
 		System.out.println("new xStart, yStart is " + xStart + ", " + yStart);
+
 		iPlusCopy.deleteRoi();
 		iPlus.deleteRoi();
 		
