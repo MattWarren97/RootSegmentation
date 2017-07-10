@@ -60,11 +60,11 @@ public class AA_LocalIterative implements PlugInFilter {
 		prevArea = 0;
 		
 		//bottom right - mostly works well.
-		/*gauss_mean = 84;
+		gauss_mean = 84;
 		xStart = 269;
 		yStart = 305;
 		zStart = 82;
-		focusArea = new Roi(new Rectangle(0, 0, 15, 22));*/
+		focusArea = new Roi(new Rectangle(0, 0, 15, 22));
 		
 		
 		//top left - works very well
@@ -75,11 +75,11 @@ public class AA_LocalIterative implements PlugInFilter {
 		zStart = 98;*/
 		
 		//bottom left - works not too badly
-		gauss_mean = 85;
+		/*gauss_mean = 85;
 		focusArea = new Roi(new Rectangle(0, 0, 22, 22));
 		xStart = 218;
 		yStart = 298;
-		zStart = 92;
+		zStart = 92;*/
 		
 		//top right, long shape - works terribly
 		/*gauss_mean = 104;
@@ -742,64 +742,47 @@ public class AA_LocalIterative implements PlugInFilter {
 		
 		//my code.
 		
-		/*
-		double[] distanceFromCenter = new double[ID];
-		Rectangle r = focusArea.getBounds();
+		double[] weightedDistanceFromCenter = new double[ID];
 		
 		double originalCenterX = Width/2;
 		double originalCenterY = Height/2;
-		for (int i1 = 1; i1 < ID; i1++) {
+		double maximumDistance = Math.sqrt(Math.pow(Width/2, 2) + Math.pow(Height/2, 2));
+		for (int i1 = 0; i1 < ID; i1++ ){
 			int centerX = new Double(Paramarray[i1][3]).intValue();
 			int centerY = new Double(Paramarray[i1][4]).intValue();
 			if (centerX == -1 || centerY == -1) {
-				distanceFromCenter[i1] = -1;
+				weightedDistanceFromCenter[i1] = -1;
 				continue;
 			}
-			//System.out.println("Structure with ID " + i1 + ", has " + Paramarray[i1][0] + " pixels");
-			distanceFromCenter[i1] = Math.sqrt(Math.pow(centerX - originalCenterX, 2) + Math.pow(centerY - originalCenterY, 2));
-		}*/
-		/*
-		int closestIDToCenter = -1;
-		double closestDistance = Width+Height; //any structure couldn't be further away from center than this.
-		for (int i2 = 1; i2 < ID; i2++) {
-			if (distanceFromCenter[i2] == -1) {
-				continue;
-			}
-			if (distanceFromCenter[i2] <= closestDistance) {
-				if (distanceFromCenter[i2] == closestDistance) {
-					System.out.println("Two objects have the same distance from the mean - incredible - value is " + closestDistance);
-					System.out.println("Width: " + Width + ", Height: " + Height + ", " + distanceFromCenter[0] + ", " + distanceFromCenter[1]);
-				}
-				else {
-					closestIDToCenter = i2;
-					closestDistance = distanceFromCenter[i2];
-				}
-			}
-		}*/
+			double distance = Math.sqrt(Math.pow(centerX - originalCenterX, 2) + Math.pow(centerY - originalCenterY, 2));
+			double area = Paramarray[i1][0];
+			double inverseDistance = (maximumDistance - distance) / maximumDistance;
+			weightedDistanceFromCenter[i1] = area*inverseDistance;
+		}
 		
-		int largestStructure = -1;
-		double largestSize = 0;
+		int bestStructure = -1;
+		double bestWeightedDistance = 0;
 		//double closestDistance = Width+Height; //any structure couldn't be further away from center than this.
 		for (int i2 = 1; i2 < ID; i2++) {
 
-			if (Paramarray[i2][0] > largestSize) {
-				if (Paramarray[i2][0] == largestSize) {
-					System.out.println("Two objects have the same size - incredible - value is " + largestSize);
+			if (weightedDistanceFromCenter[i2] > bestWeightedDistance) {
+				if (weightedDistanceFromCenter[i2] == bestWeightedDistance) {
+					System.out.println("Two objects have the same weighted distance - incredible - value is " + bestWeightedDistance);
 					//System.out.println("Width: " + Width + ", Height: " + Height + ", " + distanceFromCenter[0] + ", " + distanceFromCenter[1]);
 				}
 				else {
-					largestStructure = i2;
-					largestSize = Paramarray[i2][0];
+					bestStructure = i2;
+					bestWeightedDistance = weightedDistanceFromCenter[i2];
 				}
 			}
 		}
 		
-		//closestIDToCenter is now the ID of the structure closest to the mean.
+		//bestStructre is now the ID of the structure with the most area, closest to the mean.
 		//need to create a selection containing only the pixels in this structure.
 		for (int i3 = 0; i3 < pict.length; i3++) {
 			int whiteColor = 255;
 			int blackColor = 0;
-			if (tag[i3] == largestStructure) {
+			if (tag[i3] == bestStructure) {
 				pict[i3] = whiteColor;
 			}
 			else {
