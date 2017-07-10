@@ -55,16 +55,16 @@ public class AA_LocalIterative implements PlugInFilter {
 	
 	public AA_LocalIterative() {
 		System.err.println("Initialising log");
-		gauss_std_original = 6;
+		gauss_std_original = 4;
 		callCount = 0;
 		prevArea = 0;
 		
 		//bottom right - mostly works well.
-		gauss_mean = 84;
-		xStart = 269;
-		yStart = 305;
-		zStart = 82;
-		focusArea = new Roi(new Rectangle(0, 0, 15, 22));
+		//gauss_mean = 84;
+		//xStart = 269;
+		//yStart = 305;
+		//zStart = 82;
+		//focusArea = new Roi(new Rectangle(0, 0, 15, 22));
 		
 		
 		//top left - works very well
@@ -82,11 +82,11 @@ public class AA_LocalIterative implements PlugInFilter {
 		zStart = 92;*/
 		
 		//top right, long shape - works terribly
-		/*gauss_mean = 104;
+		gauss_mean = 104;
 		focusArea = new Roi(new Rectangle(0, 0, 31, 12));
 		xStart = 329;
 		yStart = 181;
-		zStart = 169;*/
+		zStart = 169;
 		
 		areas =  new int[Z-zStart+1];
 		
