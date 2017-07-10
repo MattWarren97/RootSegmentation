@@ -17,9 +17,9 @@ public class AAIterative_ implements PlugInFilter {
 	
 	
 	static final int MED_RD = 5;
-	static final int X = 500;
-	static final int Y = 500;
-	static final int Z = 300;
+	static final int X = 771;
+	static final int Y = 783;
+	static final int Z = 705;
 	//static final int RM_OUT_FILTER = 4;
 	//static final int[] SD_ARRAY = {4, 5, 6};
 	//static final int[] ERODE_ARRAY = {19,7,3};
@@ -34,7 +34,7 @@ public class AAIterative_ implements PlugInFilter {
 	public AAIterative_() {
 		System.err.println("Initialising log");
 		callCount = 0;
-		gauss_mean = 113;
+		gauss_mean = 84;
 		gauss_std = 4.5;
 	}
 
@@ -49,7 +49,7 @@ public class AAIterative_ implements PlugInFilter {
 		runGaussianMask(ip);
 		medianFilter(ip, MED_RD);
 		applyThreshold(ip, 75, 255);
-
+		medianFilter(ip, MED_RD);
 
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
