@@ -37,9 +37,9 @@ public class AA_LocalIterative implements PlugInFilter {
 	int callCount;
 	double gauss_mean;
 	double gauss_std;
+	double gauss_std_original;
 	double prevArea;
-	ImageProcessor ipCopy;
-	ImageProcessor ipCopy2;
+	static int[] areas;
 	
 	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
@@ -55,38 +55,40 @@ public class AA_LocalIterative implements PlugInFilter {
 	
 	public AA_LocalIterative() {
 		System.err.println("Initialising log");
-		gauss_std = 6;
+		gauss_std_original = 6;
 		callCount = 0;
 		prevArea = 0;
 		
 		//bottom right - mostly works well.
-		//gauss_mean = 84;
-		//xStart = 269;
-		//yStart = 305;
-		//zStart = 82;
-		//focusArea = new Roi(new Rectangle(0, 0, 15, 22));
+		/*gauss_mean = 84;
+		xStart = 269;
+		yStart = 305;
+		zStart = 82;
+		focusArea = new Roi(new Rectangle(0, 0, 15, 22));*/
 		
 		
 		//top left - works very well
-		//gauss_mean = 85;
-		//xStart = 235;
-		//yStart = 222;
-		//focusArea = new Roi(new Rectangle(0, 0, 17, 13));
-		//zStart = 98;
+		/*gauss_mean = 85;
+		xStart = 235;
+		yStart = 222;
+		focusArea = new Roi(new Rectangle(0, 0, 17, 13));
+		zStart = 98;*/
 		
 		//bottom left - works not too badly
-		//gauss_mean = 85;
-		//focusArea = new Roi(new Rectangle(0, 0, 22, 22));
-		//xStart = 218;
-		//yStart = 298;
-		//zStart = 92;
+		gauss_mean = 85;
+		focusArea = new Roi(new Rectangle(0, 0, 22, 22));
+		xStart = 218;
+		yStart = 298;
+		zStart = 92;
 		
 		//top right, long shape - works terribly
-		gauss_mean = 104;
+		/*gauss_mean = 104;
 		focusArea = new Roi(new Rectangle(0, 0, 31, 12));
 		xStart = 329;
 		yStart = 181;
-		zStart = 169;
+		zStart = 169;*/
+		
+		areas =  new int[Z-zStart+1];
 		
 
 	}
@@ -97,6 +99,8 @@ public class AA_LocalIterative implements PlugInFilter {
 		iPlus.show();
 	}*/
 	public void run(ImageProcessor ip) {
+		
+		gauss_std = gauss_std_original;
 		
 		if (callCount == 0) {
 			//get the user to select an inital location (and slice) of a root leaving the stem.
@@ -112,6 +116,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		}
 		
 		callCount++;
+		System.out.println("Image " + callCount + ":");
 
 		//make adjustments to ROI to allow for changing location of root.
 		focusArea.setLocation(xStart, yStart);
@@ -129,7 +134,9 @@ public class AA_LocalIterative implements PlugInFilter {
 		//focusArea = new Roi(r);
 		
 		//System.out.println("focusArea updated- X: " + ((int) r.getX()) + ", Y: " + ((int) r.getY()) + ", Width: " + ((int) r.getWidth()) + ", Height: " + ((int) r.getHeight()));
-		System.out.println("focusArea updated");
+		//System.out.println("focusArea updated");
+		int measurements = Measurements.MEAN + Measurements.STD_DEV + Measurements.AREA;
+
 		
 		ImageProcessor measureCopy = (ImageProcessor) ip.clone();
 		measureCopy.setPixels(ip.getPixelsCopy());
@@ -138,41 +145,72 @@ public class AA_LocalIterative implements PlugInFilter {
 		measureCopy = measureCopy.crop();
 		measureCopy.resetRoi();
 		
-		ImagePlus iPlus = performTransformations(measureCopy);
 		ImagePlus measurePlus = new ImagePlus("measurementsCopy" + callCount, measureCopy);
 		
-		//iPlus.show();
+		ImagePlus transformed;
+		Roi selectionRoi;		
+		ResultsTable rt;
+		Analyzer an;
+		double newMean;
+		double newStd;
+		double area = 0;
+		int repeatCount = 0;
 		
-		//Roi selectionRoi = selectFromMask(iPlus);
-		Roi selectionRoi = selectCentralObject(iPlus);
-		applyRoi(measurePlus, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
-		
-		int measurements = Measurements.MEAN + Measurements.STD_DEV + Measurements.AREA;
-		
-		ResultsTable rt = new ResultsTable();
-		Analyzer an = new Analyzer(measurePlus, measurements, rt);
-		
-		an.measure();
-		double newMean = rt.getValue("Mean", rt.getCounter()-1);
-		double newStd = rt.getValue("StdDev", rt.getCounter()-1);
-		double area = rt.getValue("Area", rt.getCounter()-1);
-		System.out.println("AREA is " + area);
-		
-		while (true) { //while the area is not 'acceptable'.
+		while(true) {
+			if (repeatCount > 0) {
+				System.err.println("on image " + callCount + ", loop has been called " + repeatCount + " times.");
+				if (repeatCount >= 4) {
+					System.err.println("repeatCount reached 4 - failed.");
+					newMean = gauss_mean;
+					selectionRoi = focusArea;
+					break;
+				}
+			}
+			//while the area is not 'acceptable'.
 			//measurePlus is the untouched copy.
 			measurePlus.deleteRoi();
-			gauss_std += 2;
+			transformed = performTransformations(measureCopy);
+			selectionRoi = selectCentralObject(transformed);
 			
+			applyRoi(measurePlus, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
 			
+			rt = new ResultsTable();
+			an = new Analyzer(measurePlus, measurements, rt);
+			an.measure();
+			
+			newMean = rt.getValue("Mean", rt.getCounter()-1);
+			newStd = rt.getValue("StdDev", rt.getCounter()-1);
+			area = rt.getValue("Area", rt.getCounter()-1);
+			System.out.println("Image: " + callCount + ", AREA is " + area + ", mean is " + newMean);
+			
+	
+			if (area <= (1/2) * prevArea) {
+				gauss_std += 2;
+				repeatCount++;
+				continue;
+			}
+			int index = callCount-zStart;
+			if (index >= 3) {
+				if (area <= (1/2) * areas[index-2]) {
+					gauss_std += 2;
+					repeatCount++;
+					continue;
+				}
+				if (area <= (1/3) * areas[index-3]) {
+					gauss_std += 2;
+					repeatCount++;
+					continue;
+				}
+			}
 			break;
-			
 		}
 		
 		gauss_mean = newMean;
 
-		System.out.println("Image: " + callCount + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
-		System.out.println("Image: " + callCount + ", Area: " + area + " change: " + (area-prevArea) + ", as percentage: " + Math.abs((area-prevArea)/prevArea));
+		//System.out.println("Image: " + callCount + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
+		//System.out.println("Image: " + callCount + ", Area: " + area + " change: " + (area-prevArea) + ", as percentage: " + Math.abs((area-prevArea)/prevArea));
 		prevArea = area;
+		areas[callCount-zStart] = (int) area;
 		
 		//displaying the changes on the imageprocessor that was passed in.
 		Roi offsetRoi = (Roi) selectionRoi.clone();
@@ -187,14 +225,12 @@ public class AA_LocalIterative implements PlugInFilter {
 
 		
 		focusArea = selectionRoi;
-		System.out.println("new focus area was- X: " + ((int) focusArea.getXBase()) + ", Y: " + ((int) focusArea.getYBase()));
+		//System.out.println("new focus area was- X: " + ((int) focusArea.getXBase()) + ", Y: " + ((int) focusArea.getYBase()));
 		xStart -= (ENLARGE_FACTOR-focusArea.getXBase());
 		yStart -= (ENLARGE_FACTOR-focusArea.getYBase());
-		System.out.println("new xStart, yStart is " + xStart + ", " + yStart);
+		//System.out.println("new xStart, yStart is " + xStart + ", " + yStart);
 
-		measurePlus.deleteRoi();
-		iPlus.deleteRoi();
-		
+		measurePlus.deleteRoi();		
 	}
 	
 	private ImagePlus performTransformations(ImageProcessor original) {
@@ -206,6 +242,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		//medianFilter(ip, MED_RD);
 		
 		return new ImagePlus("ip" + callCount, copy);
+	}
 		
 	//method copied across from https://imagej.nih.gov/ij/developer/source/ij/plugin/RoiEnlarger.java.html
 	private Roi enlargeRoi(Roi roi) {
@@ -269,7 +306,7 @@ public class AA_LocalIterative implements PlugInFilter {
 				selectedCount++;
 			}
 		}
-		System.out.println("selectFromMask, selected count is " + selectedCount);
+		//System.out.println("selectFromMask, selected count is " + selectedCount);
 		
 		
 		//We are using Fiji 8 with ImageJ 2.0.0.
@@ -305,7 +342,7 @@ public class AA_LocalIterative implements PlugInFilter {
 
 		Roi selectionRoi = iPlus.getRoi();
 		Rectangle r = selectionRoi.getBounds();
-		System.out.println("new selection has bounds " + r.getX() + ", " + r.getY() + ", " + r.getWidth() + ", " + r.getHeight());
+		//System.out.println("new selection has bounds " + r.getX() + ", " + r.getY() + ", " + r.getWidth() + ", " + r.getHeight());
 		return selectionRoi;
 	}
 	
@@ -353,7 +390,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		int width = ip.getWidth();
 		int height = ip.getHeight();
 		Rectangle r = new Rectangle(0,0,width,height);
-		System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
+		//System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
 
 		int offset, i;
 		for (int y = r.y; y < (r.y+r.height); y++) {
@@ -507,7 +544,7 @@ public class AA_LocalIterative implements PlugInFilter {
 				selectedCount++;
 			}
 		}
-		System.out.println("selectCentralObject, selected count is " + selectedCount);
+		//System.out.println("selectCentralObject, selected count is " + selectedCount);
         int x, y, z;
         int xn, yn, zn;
         int i, j, k, arrayIndex, offset;
@@ -704,6 +741,8 @@ public class AA_LocalIterative implements PlugInFilter {
 		//then need to go through and find a way to change the selection to be just that structure.
 		
 		//my code.
+		
+		/*
 		double[] distanceFromCenter = new double[ID];
 		Rectangle r = focusArea.getBounds();
 		
@@ -716,10 +755,10 @@ public class AA_LocalIterative implements PlugInFilter {
 				distanceFromCenter[i1] = -1;
 				continue;
 			}
-			System.out.println("Structure with ID " + i1 + ", has " + Paramarray[i1][0] + " pixels");
+			//System.out.println("Structure with ID " + i1 + ", has " + Paramarray[i1][0] + " pixels");
 			distanceFromCenter[i1] = Math.sqrt(Math.pow(centerX - originalCenterX, 2) + Math.pow(centerY - originalCenterY, 2));
-		}
-		
+		}*/
+		/*
 		int closestIDToCenter = -1;
 		double closestDistance = Width+Height; //any structure couldn't be further away from center than this.
 		for (int i2 = 1; i2 < ID; i2++) {
@@ -736,6 +775,23 @@ public class AA_LocalIterative implements PlugInFilter {
 					closestDistance = distanceFromCenter[i2];
 				}
 			}
+		}*/
+		
+		int largestStructure = -1;
+		double largestSize = 0;
+		//double closestDistance = Width+Height; //any structure couldn't be further away from center than this.
+		for (int i2 = 1; i2 < ID; i2++) {
+
+			if (Paramarray[i2][0] > largestSize) {
+				if (Paramarray[i2][0] == largestSize) {
+					System.out.println("Two objects have the same size - incredible - value is " + largestSize);
+					//System.out.println("Width: " + Width + ", Height: " + Height + ", " + distanceFromCenter[0] + ", " + distanceFromCenter[1]);
+				}
+				else {
+					largestStructure = i2;
+					largestSize = Paramarray[i2][0];
+				}
+			}
 		}
 		
 		//closestIDToCenter is now the ID of the structure closest to the mean.
@@ -743,7 +799,7 @@ public class AA_LocalIterative implements PlugInFilter {
 		for (int i3 = 0; i3 < pict.length; i3++) {
 			int whiteColor = 255;
 			int blackColor = 0;
-			if (tag[i3] == closestIDToCenter) {
+			if (tag[i3] == largestStructure) {
 				pict[i3] = whiteColor;
 			}
 			else {
