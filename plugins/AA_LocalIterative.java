@@ -131,38 +131,42 @@ public class AA_LocalIterative implements PlugInFilter {
 		//System.out.println("focusArea updated- X: " + ((int) r.getX()) + ", Y: " + ((int) r.getY()) + ", Width: " + ((int) r.getWidth()) + ", Height: " + ((int) r.getHeight()));
 		System.out.println("focusArea updated");
 		
-		ipCopy2 = (ImageProcessor) ip.clone();
-		ipCopy2.setPixels(ip.getPixelsCopy());
-		ipCopy2.setRoi(focusArea);
+		ImageProcessor measureCopy = (ImageProcessor) ip.clone();
+		measureCopy.setPixels(ip.getPixelsCopy());
+		measureCopy.setRoi(focusArea);
 		
-		ipCopy2 = ipCopy2.crop();
-				
-		ipCopy=(ImageProcessor) ipCopy2.clone();
-		ipCopy.setPixels(ipCopy2.getPixelsCopy());
-		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
-
-		runGaussianMask(ipCopy2);
-		medianFilter(ipCopy2, MED_RD);
-		applyThreshold(ipCopy2, 75, 255);
-		//medianFilter(ip, MED_RD);
+		measureCopy = measureCopy.crop();
+		measureCopy.resetRoi();
 		
-		ImagePlus iPlus = new ImagePlus("ip" + callCount, ipCopy2);
+		ImagePlus iPlus = performTransformations(measureCopy);
+		ImagePlus measurePlus = new ImagePlus("measurementsCopy" + callCount, measureCopy);
+		
 		//iPlus.show();
 		
 		//Roi selectionRoi = selectFromMask(iPlus);
 		Roi selectionRoi = selectCentralObject(iPlus);
-		applyRoi(iPlusCopy, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
+		applyRoi(measurePlus, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
 		
 		int measurements = Measurements.MEAN + Measurements.STD_DEV + Measurements.AREA;
 		
 		ResultsTable rt = new ResultsTable();
-		Analyzer an = new Analyzer(iPlusCopy, measurements, rt);
+		Analyzer an = new Analyzer(measurePlus, measurements, rt);
 		
 		an.measure();
 		double newMean = rt.getValue("Mean", rt.getCounter()-1);
 		double newStd = rt.getValue("StdDev", rt.getCounter()-1);
 		double area = rt.getValue("Area", rt.getCounter()-1);
 		System.out.println("AREA is " + area);
+		
+		while (true) { //while the area is not 'acceptable'.
+			//measurePlus is the untouched copy.
+			measurePlus.deleteRoi();
+			gauss_std += 2;
+			
+			
+			break;
+			
+		}
 		
 		gauss_mean = newMean;
 
@@ -188,10 +192,20 @@ public class AA_LocalIterative implements PlugInFilter {
 		yStart -= (ENLARGE_FACTOR-focusArea.getYBase());
 		System.out.println("new xStart, yStart is " + xStart + ", " + yStart);
 
-		iPlusCopy.deleteRoi();
+		measurePlus.deleteRoi();
 		iPlus.deleteRoi();
 		
 	}
+	
+	private ImagePlus performTransformations(ImageProcessor original) {
+		ImageProcessor copy = (ImageProcessor) original.clone();
+		copy.setPixels(original.getPixelsCopy());
+		runGaussianMask(copy);
+		medianFilter(copy, MED_RD);
+		applyThreshold(copy, 75, 255);
+		//medianFilter(ip, MED_RD);
+		
+		return new ImagePlus("ip" + callCount, copy);
 		
 	//method copied across from https://imagej.nih.gov/ij/developer/source/ij/plugin/RoiEnlarger.java.html
 	private Roi enlargeRoi(Roi roi) {
