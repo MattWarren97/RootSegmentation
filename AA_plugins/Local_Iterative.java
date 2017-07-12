@@ -1,3 +1,5 @@
+package AA_plugins;
+
 import ij.*; //   \\Cseg_2\erc\ADMIN\Programmes\Fiji_201610_JAVA8.app\jars\ij-1.51g.jar needs to be added to classpath when compiling(-cp))
 import ij.plugin.filter.PlugInFilter;
 import ij.process.*;
@@ -16,7 +18,7 @@ import ij.plugin.filter.EDM;
 import ij.gui.OvalRoi;
 import ij.measure.Calibration;
 
-public class AA_LocalIterative implements PlugInFilter {
+public class Local_Iterative implements PlugInFilter {
 	
 	static final int DIMENSIONS_INCREMENT = 10; //must be multiple of 2.
 	//each time run is called, new focus area is selected to have DIMENSIONS_INCREMENT longer width and height
@@ -53,7 +55,7 @@ public class AA_LocalIterative implements PlugInFilter {
 	int NbSlices;
 	
 	
-	public AA_LocalIterative() {
+	public Local_Iterative() {
 		System.err.println("Initialising log");
 		gauss_std_original = 4;
 		callCount = 0;
@@ -82,11 +84,18 @@ public class AA_LocalIterative implements PlugInFilter {
 		zStart = 92;*/
 		
 		//top right, long shape - works terribly
-		gauss_mean = 104;
-		focusArea = new Roi(new Rectangle(0, 0, 31, 12));
-		xStart = 329;
-		yStart = 181;
-		zStart = 169;
+		//gauss_mean = 104;
+		//focusArea = new Roi(new Rectangle(0, 0, 31, 12));
+		//xStart = 329;
+		//yStart = 181;
+		//zStart = 169;
+		
+		//impossible shape... middle right.
+		gauss_mean = 90;
+		focusArea = new Roi(new Rectangle(0,0, 22, 12));
+		xStart = 278;
+		yStart = 259;
+		zStart = 127;
 		
 		areas =  new int[Z-zStart+1];
 		

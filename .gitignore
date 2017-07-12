@@ -3,3 +3,5 @@ JavaCopyOfLauraDanMacro/
 *.db
 *.raw
 plugins/javaTest*
+AA_plugins/javaTest*
+*.class

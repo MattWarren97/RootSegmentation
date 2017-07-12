@@ -1,3 +1,5 @@
+package AA_plugins;
+
 import ij.*; //   \\Cseg_2\erc\ADMIN\Programmes\Fiji_201610_JAVA8.app\jars\ij-1.51g.jar needs to be added to classpath when compiling(-cp))
 import ij.plugin.filter.PlugInFilter;
 import ij.process.*;
@@ -12,8 +14,9 @@ import ij.measure.ResultsTable;
 import ij.gui.ImageWindow;
 import ij.plugin.filter.ThresholdToSelection;
 import ij.gui.Roi;
+import distanceTransform.*;
 
-public class AAIterative_ implements PlugInFilter {
+public class Global_Iterative implements PlugInFilter {
 	
 	
 	static final int MED_RD = 5;
@@ -31,7 +34,7 @@ public class AAIterative_ implements PlugInFilter {
 	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
 
-	public AAIterative_() {
+	public Global_Iterative() {
 		System.err.println("Initialising log");
 		callCount = 0;
 		gauss_mean = 84;
@@ -344,4 +347,5 @@ public class AAIterative_ implements PlugInFilter {
 		}
 		return DOES_8G+DOES_STACKS+SUPPORTS_MASKING;
 	}
+	
 }
