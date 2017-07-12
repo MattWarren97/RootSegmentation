@@ -62,13 +62,12 @@ public class Local_Iterative implements PlugInFilter {
 		prevArea = 0;
 		
 		//bottom right - mostly works well.
-		//gauss_mean = 84;
-		//xStart = 269;
-		//yStart = 305;
-		//zStart = 82;
-		//focusArea = new Roi(new Rectangle(0, 0, 15, 22));
-		
-		
+		gauss_mean = 84;
+		xStart = 269;
+		yStart = 305;
+		zStart = 82;
+		focusArea = new Roi(new Rectangle(0, 0, 15, 22));
+				
 		//top left - works very well
 		/*gauss_mean = 85;
 		xStart = 235;
@@ -91,11 +90,11 @@ public class Local_Iterative implements PlugInFilter {
 		//zStart = 169;
 		
 		//impossible shape... middle right.
-		gauss_mean = 90;
-		focusArea = new Roi(new Rectangle(0,0, 22, 12));
-		xStart = 278;
-		yStart = 259;
-		zStart = 127;
+		//gauss_mean = 90;
+		//focusArea = new Roi(new Rectangle(0,0, 22, 12));
+		//xStart = 278;
+		//yStart = 259;
+		//zStart = 127;
 		
 		areas =  new int[Z-zStart+1];
 		
@@ -128,6 +127,8 @@ public class Local_Iterative implements PlugInFilter {
 		System.out.println("Image " + callCount + ":");
 
 		//make adjustments to ROI to allow for changing location of root.
+		Rectangle bounds = focusArea.getBounds();
+		System.out.println("Before enlargment, focus area bounds give area of " + (bounds.getWidth()*bounds.getHeight()));
 		focusArea.setLocation(xStart, yStart);
 		try {
 			focusArea = enlargeRoi(focusArea);
