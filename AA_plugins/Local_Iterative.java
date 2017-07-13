@@ -96,6 +96,13 @@ public class Local_Iterative implements PlugInFilter {
 		//yStart = 259;
 		//zStart = 127;
 		
+		//the top right long shape in resliced 613_300_613.
+		gauss_mean = 96.6;
+		focusArea = new Roi(new Rectangle(0,0,5,9));
+		xStart = 267;
+		yStart = 155;
+		zStart = 216;
+		
 		areas =  new int[Z-zStart+1];
 		
 
