@@ -17,8 +17,14 @@ import ij.gui.Roi;
 import ij.gui.PointRoi;
 import externalPluginCopies.*;
 
+	
+
 public class Global_Iterative implements PlugInFilter {
 	
+	public enum FilterType {
+		MEDIAN,
+		MIN
+	}
 	ImagePlus image;
 	
 	static final int MED_RD = 5;
@@ -83,9 +89,9 @@ public class Global_Iterative implements PlugInFilter {
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
 		runGaussianMask(ip);
-		medianFilter(ip, MED_RD);
+		applyFilter(ip, MED_RD, FilterType.MEDIAN);
 		applyThreshold(ip, 75, 255);
-		medianFilter(ip, MED_RD);
+		applyFilter(ip, MED_RD, FilterType.MEDIAN);
 
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
@@ -117,6 +123,8 @@ public class Global_Iterative implements PlugInFilter {
 		
 		iPlusCopy.deleteRoi();
 		iPlus.deleteRoi();
+		
+	}
 		
 	
 	//method derived from https://imagej.nih.gov/ij/source/ij/plugin/Selection.java
@@ -233,8 +241,9 @@ public class Global_Iterative implements PlugInFilter {
 		ip.setBinaryThreshold();
 	}
 	
-		//this implementation from http://svg.dmi.unict.it/iplab/imagej/Plugins/Forensics/Median_filter2/Median_Filter.html
-	private void medianFilter(ImageProcessor ip, int radius) {
+
+	//this implementation from http://svg.dmi.unict.it/iplab/imagej/Plugins/Forensics/Median_filter2/Median_Filter.html
+	private void applyFilter(ImageProcessor ip, int radius, FilterType filter) {
 
 		int width = X;
 		int height = Y;
@@ -247,12 +256,22 @@ public class Global_Iterative implements PlugInFilter {
 		
 		int[][] arrays = create2DIntArray(pixels, width, height);
 		
-		int [][] medianArray = new int [width][height];
-		for(int j=0;j<height;j++)
-			for(int i=0;i<width;i++)
-				medianArray[i][j] = pixelMedian(arrays,MED_RD,width,height,i,j);
+		int [][] filteredArray = new int [width][height];
+		for(int j=0;j<height;j++) {
+			for(int i=0;i<width;i++) {
+				if (filter == FilterType.MEDIAN) {
+					filteredArray[i][j] = pixelMedian(arrays,radius,width,height,i,j);
+				}
+				else if (filter == FilterType.MIN) {
+					filteredArray[i][j] = pixelMin(arrays,radius,width,height,i,j);
+				}
+				else {
+					System.err.println("No filter applied - invalid filter type " + filter);
+				}
+			}
+		}
 		
-		int[] output = array_2d_to_1d(medianArray, width, height);
+		int[] output = array_2d_to_1d(filteredArray, width, height);
 			
 		for(int j=0;j<output.length;j++)
 			pixels[j]=(byte)output[j];
@@ -280,6 +299,10 @@ public class Global_Iterative implements PlugInFilter {
 		int medianIndex = (int)(countInRange/2);
         return (inRadius[medianIndex]);
     }
+	
+	private int pixelMin(int[][] array2d, int radius, int width, int height, int x, int y) {
+		return 0;
+	}
 	
 	private int[][] create2DIntArray(byte[] pix, int width, int height) {
 		int[][] array2d = new int[width][height];
