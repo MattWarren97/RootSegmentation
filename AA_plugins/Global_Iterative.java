@@ -48,7 +48,7 @@ public class Global_Iterative implements PlugInFilter {
 		gauss_mean = 84;
 		gauss_std = 4.5;
 	}
-
+	
 	public void run(ImageProcessor ip) {
 		ImageStack stack = image.getStack();
 		int stackSize = stack.getSize();
@@ -301,7 +301,19 @@ public class Global_Iterative implements PlugInFilter {
     }
 	
 	private int pixelMin(int[][] array2d, int radius, int width, int height, int x, int y) {
-		return 0;
+		int min = 255;
+		for (int j = 0; j< radius; j++) {
+			for (int i = 0; i < radius; i++) {
+	            if(((x-1+i)>=0) && ((y-1+j)>=0) && ((x-1+i)<width) && ((y-1+j)<height)) {
+					int value = array2d[x-1+i][y-1+j];
+					if (value < min) {
+						min = value;
+					}
+				}
+			}
+		}
+
+		return min;
 	}
 	
 	private int[][] create2DIntArray(byte[] pix, int width, int height) {
