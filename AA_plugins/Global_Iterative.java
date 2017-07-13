@@ -118,56 +118,12 @@ public class Global_Iterative implements PlugInFilter {
 		iPlusCopy.deleteRoi();
 		iPlus.deleteRoi();
 		
-		
-		
-		
-		/*
-		iPlus.getWindow().close();
-		iPlusCopy.getWindow().close();
-		*/
-		
-		/*ImageStatistics stats = ImageStatistics.getStatistics(ipCopy, Measurements.MEAN, iPlusCopy.getCalibration());
-		System.out.println("Mean is " + stats.mean);
-		*/
-		/*
-		ImageStatistics ipCopyStats = iPlusCopy.getStatistics();		
-		double mean = ipCopyStats.MEAN;
-		double std = ipCopyStats.STD_DEV;
-		System.out.println("IPCopy:   mean: " + mean + ", std: " + std);
-		*/		
-		
-		/*ResultsTable rt = ResultsTable.getResultsTable();
-		Analyzer an = new Analyzer(iPlusCopy);
-		an.saveResults(*/
-		
-	}
-	
-	/*
-	private void setSelectedWindow(ImageWindow iw) {
-		WindowManager.setCurrentWindow(iw);
-		while(WindowManager.getCurrentWindow() != iw) {
-			System.out.println("Not changed yet");
-		}
-	}
-	*/
 	
 	//method derived from https://imagej.nih.gov/ij/source/ij/plugin/Selection.java
 	//All I've done is rewritten that method to be more convenient [doesn't need an ImageWindow object]
 	
 	private Roi selectFromMask(ImagePlus iPlus) {
-		//iPlus.show();
 		ImageProcessor ip = iPlus.getProcessor();
-		
-		//System.err.println("Image: " + callCount + ", Binary: " + ip.isBinary());
-		
-		
-		
-		//We are using Fiji 8 with ImageJ 2.0.0.
-		//I can't find sources for ImageJ 2.0.0, only 1.5.
-		//In 1.5 the 'isBinary()' method will always return false.
-		//In 2.0.0 it will seemingly return true sometimes, but not always, and I don't know what the conditions are.
-		//actually, it appears the images were not binary...
-		
 		
 		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
 		if (!ip.isBinary()) {
@@ -348,25 +304,6 @@ public class Global_Iterative implements PlugInFilter {
 		return output;
 	}
 	
-	
-	
-	private int segmentAndCalculateMean(ImageProcessor ip, float init_mean, float init_std) {
-		//change canvas size (for median filter?)
-		//set the measurements
-		//Duplicate the first slice (twice)
-		//run("Macro...", "code=v=(1/("+SD+"*sqrt(2*3.14)))*exp((-(v-"+M+")*(v-"+M+"))/(2*"+SD+"*"+SD+"))/(1/("+SD+"*sqrt(2*3.14)))*exp((0)/(2*("+SD+"*"+SD+")))*255");
-
-		//Run that guassian formula, pixel = (1/(SD*sqrt(2*3.14))) * exp((-(pixel-MEAN)*(pixel-MEAN))/(2*SD*SD)) / (1/(SD*sqrt(2*3.14))) * exp((0/(2*SD*SD))) * 255;
-		//simplifies to pixel = exp((-(pixel-MEAN)^2)/2*SD^2) * 255
-		
-		//then threshold on that (is equivalent to ~1.5xS.D. either side of mean).
-		//convert to mask, invert.
-		
-		//run a median filter
-		//remove outliers
-		
-		return 0;
-	}
 	
 	void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
