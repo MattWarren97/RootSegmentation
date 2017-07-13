@@ -45,7 +45,7 @@ public class EDT implements PlugInFilter {
 		d = stack.getSize();
 		ImageStack result = new ImageStack(w, h, d);
 		for (int i = 1; i <= d; i++)
-			result.setPixels(new float[w * h], i);
+			result.setPixels(new float[w * h], i); //set slice i to the (float) pixel array.
 
 		current = 0;
 		total = w * h * d * 3;
