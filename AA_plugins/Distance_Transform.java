@@ -30,7 +30,7 @@ public class Distance_Transform implements PlugInFilter {
 		System.out.println("ip is " + ip);
 		ImagePlus iPlus = edt.performTransform(image);
 		System.out.println("iPlus's ip is " + iPlus.getProcessor());
-		iPlus.show();
+		//iPlus.show();
 	}
 	
 	//Called by the system when the plugin is run. [arg is selected by the user at that time]

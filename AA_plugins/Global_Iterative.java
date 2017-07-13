@@ -14,15 +14,16 @@ import ij.measure.ResultsTable;
 import ij.gui.ImageWindow;
 import ij.plugin.filter.ThresholdToSelection;
 import ij.gui.Roi;
-import distanceTransform.*;
+import externalPluginCopies.*;
 
 public class Global_Iterative implements PlugInFilter {
 	
+	ImagePlus image;
 	
 	static final int MED_RD = 5;
-	static final int X = 771;
-	static final int Y = 783;
-	static final int Z = 705;
+	int X;
+	int Y;
+	int Z;
 	//static final int RM_OUT_FILTER = 4;
 	//static final int[] SD_ARRAY = {4, 5, 6};
 	//static final int[] ERODE_ARRAY = {19,7,3};
@@ -41,8 +42,18 @@ public class Global_Iterative implements PlugInFilter {
 		gauss_std = 4.5;
 	}
 
-	//on an image stack, the run method is called on each image in order.
 	public void run(ImageProcessor ip) {
+		ImageStack stack = image.getStack();
+		int stackSize = stack.getSize();
+		for (int i = 1; i <= stackSize; i++) {
+			calculate(stack.getProcessor(i));
+		}
+		image.show();
+		
+		
+	}
+		
+	public void calculate(ImageProcessor ip) {
 		
 		//System.err.println("Ooh look I'm running its me I'm running ooh look");
 		callCount++;
@@ -341,11 +352,15 @@ public class Global_Iterative implements PlugInFilter {
 	
 	//Called by the system when the plugin is run. [arg is selected by the user at that time]
 	public int setup(String arg, ImagePlus imp) {
+		this.image = imp;
+		this.X = image.getWidth();
+		this.Y = image.getHeight();
+		this.Z = image.getStackSize();
 		if (arg.equals("about")) {
 			showAbout();
 			return DONE; //These enums are defined in PlugInFilter.
 		}
-		return DOES_8G+DOES_STACKS+SUPPORTS_MASKING;
+		return DOES_8G+SUPPORTS_MASKING;
 	}
 	
 }
