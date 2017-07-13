@@ -28,6 +28,14 @@ public class EDT implements PlugInFilter {
 	int current, total;
 	static int callCount = 0;
 	
+	public ImagePlus performTransform(ImagePlus imp) {
+		if (imp == null) {
+			System.err.println("imp was null");
+		}
+		ImagePlus iPlus = compute(imp.getStack());
+		return iPlus;
+	}
+	
 	public int setup(String arg, ImagePlus image) {
 		this.image = image;
 		return DOES_8G | NO_CHANGES;
