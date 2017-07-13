@@ -68,7 +68,7 @@ public class Global_Iterative implements PlugInFilter {
 		
 		image.setRoi(point);
 		image.show();
-		FindConnectedRegions_ fcr = new FindConnectedRegions_();
+		FindConnectedRegions fcr = new FindConnectedRegions();
 		image = fcr.calculate(image);
 		image.show();
 		//applyThreshold(ip, 0, 11);
