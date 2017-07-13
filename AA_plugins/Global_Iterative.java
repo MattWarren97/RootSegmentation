@@ -46,10 +46,24 @@ public class Global_Iterative implements PlugInFilter {
 		ImageStack stack = image.getStack();
 		int stackSize = stack.getSize();
 		for (int i = 1; i <= stackSize; i++) {
-			calculate(stack.getProcessor(i));
+			ImageProcessor nextSlice = stack.getProcessor(i);
+			calculate(nextSlice);
+			nextSlice.invert();
 		}
-		image.show();
 		
+		EDTExtra edt = new EDTExtra();
+		image = edt.performTransform(image); //returns a new object - a float image.
+		stack = image.getStack();
+		ImageStack byteStack = new ImageStack(X, Y, Z);
+		for (int i = 1; i<= stackSize; i++) {
+			ImageProcessor nextSlice = stack.getProcessor(i);
+			ip = nextSlice.convertToByteProcessor(true);
+			byteStack.setProcessor(ip, i);
+			applyThreshold(ip, 0, 13);
+		}
+		image = new ImagePlus("distance transformed", byteStack);
+		image.show();
+		//applyThreshold(ip, 0, 11);
 		
 	}
 		
