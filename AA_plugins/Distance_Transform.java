@@ -26,7 +26,7 @@ public class Distance_Transform implements PlugInFilter {
 		callCount++;
 		System.out.println("Call count is now " + callCount);
 		
-		EDTExtra edt = new EDTExtra();
+		EDT edt = new EDT();
 		System.out.println("ip is " + ip);
 		ImagePlus iPlus = edt.performTransform(image);
 		System.out.println("iPlus's ip is " + iPlus.getProcessor());
