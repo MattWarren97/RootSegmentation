@@ -14,6 +14,7 @@ import ij.measure.ResultsTable;
 import ij.gui.ImageWindow;
 import ij.plugin.filter.ThresholdToSelection;
 import ij.gui.Roi;
+import ij.gui.PointRoi;
 import externalPluginCopies.*;
 
 public class Global_Iterative implements PlugInFilter {
@@ -51,7 +52,7 @@ public class Global_Iterative implements PlugInFilter {
 			nextSlice.invert();
 		}
 		
-		EDTExtra edt = new EDTExtra();
+		EDT edt = new EDT();
 		image = edt.performTransform(image); //returns a new object - a float image.
 		stack = image.getStack();
 		ImageStack byteStack = new ImageStack(X, Y, Z);
@@ -62,6 +63,13 @@ public class Global_Iterative implements PlugInFilter {
 			applyThreshold(ip, 0, 13);
 		}
 		image = new ImagePlus("distance transformed", byteStack);
+		
+		PointRoi point = new PointRoi((int) X/2, (int) Y/2); //TODO: Guarantee that this point will be in the selection...
+		
+		image.setRoi(point);
+		image.show();
+		FindConnectedRegions_ fcr = new FindConnectedRegions_();
+		image = fcr.calculate(image);
 		image.show();
 		//applyThreshold(ip, 0, 11);
 		
