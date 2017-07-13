@@ -66,17 +66,28 @@ public class Global_Iterative implements PlugInFilter {
 			ImageProcessor nextSlice = stack.getProcessor(i);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, i);
-			applyThreshold(ip, 0, 13);
+			applyThreshold(ip, 0, 15);
 		}
 		image = new ImagePlus("distance transformed", byteStack);
 		
 		PointRoi point = new PointRoi((int) X/2, (int) Y/2); //TODO: Guarantee that this point will be in the selection...
 		
 		image.setRoi(point);
-		image.show();
+		//image.show();
 		FindConnectedRegions fcr = new FindConnectedRegions();
 		image = fcr.calculate(image);
 		image.show();
+		/*
+		stack = image.getStack();
+		byteStack = new ImageStack(X, Y, Z);
+		for (int i = 1; i <= stackSize; i++) {
+			ImageProcessor nextSlice = stack.getProcessor(i);
+			ip = nextSlice.convertToByteProcessor(true);
+			byteStack.setProcessor(ip, i);
+		}
+		image = new ImagePlus("Final 8-bit display", byteStack);
+		image.show();
+		*/
 		//applyThreshold(ip, 0, 11);
 		
 	}
@@ -91,7 +102,7 @@ public class Global_Iterative implements PlugInFilter {
 		runGaussianMask(ip);
 		applyFilter(ip, MED_RD, FilterType.MEDIAN);
 		applyThreshold(ip, 75, 255);
-		applyFilter(ip, MED_RD, FilterType.MEDIAN);
+		applyFilter(ip, 2, FilterType.MIN);
 
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
