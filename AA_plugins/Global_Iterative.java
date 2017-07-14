@@ -179,7 +179,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	}
 	
 		
-	void showAbout() {
+	public void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
 	}
 	

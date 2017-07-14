@@ -17,21 +17,29 @@ import ij.gui.Roi;
 import ij.plugin.filter.EDM;
 import ij.gui.OvalRoi;
 import ij.measure.Calibration;
+import AA_plugins.*;
 
 
 
 public class FilterPlugin {
+	
+	SegmentationPlugin segmentationPlugin;
 	
 	public enum FilterType {
 		MEDIAN,
 		MIN
 	}
 	
+	public FilterPlugin(SegmentationPlugin segmentationPlugin) {
+		this.segmentationPlugin = segmentationPlugin;
+	}
+		
+	
 		//this implementation from http://svg.dmi.unict.it/iplab/imagej/Plugins/Forensics/Median_filter2/Median_Filter.html
 	public void applyFilter(ImageProcessor ip, int radius, FilterType filter) {
 
-		int width = X;
-		int height = Y;
+		int width = segmentationPlugin.X;
+		int height = segmentationPlugin.Y;
 		
 		byte[] pixels = (byte[]) ip.getPixels();
 		

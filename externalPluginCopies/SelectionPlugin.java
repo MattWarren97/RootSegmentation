@@ -371,20 +371,19 @@ public class SelectionPlugin {
 	}
 	
 		//method copied across from https://imagej.nih.gov/ij/developer/source/ij/plugin/RoiEnlarger.java.html
-	public Roi enlargeRoi(Roi roi) {
+	public Roi enlargeRoi(Roi roi, int enlargeFactor) {
 		roi = (Roi) roi.clone();
 		int type = roi.getType();
-        int n = ENLARGE_FACTOR;
         if (type==Roi.RECTANGLE || type==Roi.OVAL)
-            return enlargeRectOrOval(roi, n);
+            return enlargeRectOrOval(roi, enlargeFactor);
         Rectangle bounds = roi.getBounds();
         int width = bounds.width;
         int height = bounds.height;
-        width += 2*n +2;
-        height += 2*n +2;
+        width += 2*enlargeFactor +2;
+        height += 2*enlargeFactor +2;
         ImageProcessor ip = new ByteProcessor(width, height);
         ip.invert();
-        roi.setLocation(n+1, n+1);
+        roi.setLocation(enlargeFactor+1, enlargeFactor+1);
         ip.setColor(0);
         ip.fill(roi);
         roi.setLocation(bounds.x, bounds.y);
@@ -393,11 +392,11 @@ public class SelectionPlugin {
         new EDM().toEDM(ip);
         //new ImagePlus("ip", ip).show();
         Prefs.blackBackground = bb;
-        ip.setThreshold(0, n, ImageProcessor.NO_LUT_UPDATE);
+        ip.setThreshold(0, enlargeFactor, ImageProcessor.NO_LUT_UPDATE);
         Roi roi2 = (new ThresholdToSelection()).convert(ip);
         if (roi2==null)
             return roi;
-        roi2.setLocation(bounds.x-n, bounds.y-n);
+        roi2.setLocation(bounds.x-enlargeFactor, bounds.y-enlargeFactor);
         roi2.setStrokeColor(roi.getStrokeColor());
         if (roi.getStroke()!=null)
             roi2.setStroke(roi.getStroke());
