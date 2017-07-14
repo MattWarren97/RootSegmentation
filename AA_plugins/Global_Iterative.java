@@ -16,40 +16,25 @@ import ij.plugin.filter.ThresholdToSelection;
 import ij.gui.Roi;
 import ij.gui.PointRoi;
 import externalPluginCopies.*;
+import externalPluginCopies.FilterPlugin.FilterType;
 
 	
 
-public class Global_Iterative implements PlugInFilter {
-	
-	public enum FilterType {
-		MEDIAN,
-		MIN
-	}
-	ImagePlus image;
+public class Global_Iterative extends SegmentationPlugin implements PlugInFilter {
 	
 	static final int MED_RD = 5;
-	int X;
-	int Y;
-	int Z;
-	//static final int RM_OUT_FILTER = 4;
-	//static final int[] SD_ARRAY = {4, 5, 6};
-	//static final int[] ERODE_ARRAY = {19,7,3};
-	//static final int[] MAX_STD = {8, 9, 10};
+
 	int callCount;
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
-	SelectionPlugin selectionPlugin;
-	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
-	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
 
 	public Global_Iterative() {
-		System.err.println("Initialising log");
+		super();
 		callCount = 0;
 		gauss_mean = 112;
 		//gauss_mean=84;
 		gauss_std = 4.5;
-		selectionPlugin = new SelectionPlugin();
 	}
 	
 	public void run(ImageProcessor ip) {
@@ -106,9 +91,9 @@ public class Global_Iterative implements PlugInFilter {
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
 		runGaussianMask(ip);
-		applyFilter(ip, MED_RD, FilterType.MEDIAN);
+		filterPlugin.applyFilter(ip, MED_RD, FilterType.MEDIAN);
 		applyThreshold(ip, 75, 255);
-		applyFilter(ip, 2, FilterType.MIN);
+		filterPlugin.applyFilter(ip, 2, FilterType.MIN);
 
 		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
@@ -142,38 +127,9 @@ public class Global_Iterative implements PlugInFilter {
 		iPlus.deleteRoi();
 		
 	}
-		
-	
-	//I don't know how much of this method is actually required for ThresholdToSelection, but I'll use it all for now.
-	//from https://github.com/imagej/imagej1/blob/master/ij/plugin/filter/PlugInFilterRunner.java
-	private void prepareProcessor(ImageProcessor ip, ImagePlus imp) {
-		ImageProcessor mask = imp.getMask();
-		Roi roi = imp.getRoi();
-		if (roi!=null && roi.isArea())
-			ip.setRoi(roi);
-		else
-			ip.setRoi((Roi)null);
-		if (imp.getStackSize()>1) {
-			ImageProcessor ip2 = imp.getProcessor();
-			double min1 = ip2.getMinThreshold();
-			double max1 = ip2.getMaxThreshold();
-			double min2 = ip.getMinThreshold();
-			double max2 = ip.getMaxThreshold();
-			if (min1!=ImageProcessor.NO_THRESHOLD && (min1!=min2||max1!=max2))
-				ip.setThreshold(min1, max1, ImageProcessor.NO_LUT_UPDATE);
-		}
-		//float[] cTable = imp.getCalibration().getCTable();
-		//ip.setCalibrationTable(cTable);
-}
 	
 	private void applyRoi(ImagePlus iPlus, Roi roi) {
 		iPlus.setRoi(roi);
-	}
-			
-	
-	private void adjustGaussMeanStd(ImageProcessor ip) {
-		
-		//ip.applyTable(pixelsTable);
 	}
 	
 	private void runGaussianMask(ImageProcessor ip) {
@@ -222,120 +178,9 @@ public class Global_Iterative implements PlugInFilter {
 		ip.setBinaryThreshold();
 	}
 	
-
-	//this implementation from http://svg.dmi.unict.it/iplab/imagej/Plugins/Forensics/Median_filter2/Median_Filter.html
-	private void applyFilter(ImageProcessor ip, int radius, FilterType filter) {
-
-		int width = X;
-		int height = Y;
-		
-		byte[] pixels = (byte[]) ip.getPixels();
-		
-		int[] tmp=new int[pixels.length];
-		for (int i=0;i<pixels.length;i++)
-			tmp[i]=pixels[i]&0xff; //this.... is just pixels[i], surely?
-		
-		int[][] arrays = create2DIntArray(pixels, width, height);
-		
-		int [][] filteredArray = new int [width][height];
-		for(int j=0;j<height;j++) {
-			for(int i=0;i<width;i++) {
-				if (filter == FilterType.MEDIAN) {
-					filteredArray[i][j] = pixelMedian(arrays,radius,width,height,i,j);
-				}
-				else if (filter == FilterType.MIN) {
-					filteredArray[i][j] = pixelMin(arrays,radius,width,height,i,j);
-				}
-				else {
-					System.err.println("No filter applied - invalid filter type " + filter);
-				}
-			}
-		}
-		
-		int[] output = array_2d_to_1d(filteredArray, width, height);
-			
-		for(int j=0;j<output.length;j++)
-			pixels[j]=(byte)output[j];
-	}
-	
-	private int pixelMedian(int[][] array2d, int radius, int width, int height, int x, int y) {
-		
-        int sum = 0;
-        int countInRange = 0;
-		int[] inRadius=new int[radius*radius];;
-        for(int j=0;j<radius;j++)
-        {
-            for(int i=0;i<radius;i++)
-            {
-	            if(((x-1+i)>=0) && ((y-1+j)>=0) && ((x-1+i)<width) && ((y-1+j)<height))
-                {
-					inRadius[countInRange]=array2d[x-1+i][y-1+j];
-	                countInRange++;
-	            }
-            }
-        }
-		Arrays.sort(inRadius);
-        if(countInRange==0) 
-            return 0;
-		int medianIndex = (int)(countInRange/2);
-        return (inRadius[medianIndex]);
-    }
-	
-	private int pixelMin(int[][] array2d, int radius, int width, int height, int x, int y) {
-		int min = 255;
-		for (int j = 0; j< radius; j++) {
-			for (int i = 0; i < radius; i++) {
-	            if(((x-1+i)>=0) && ((y-1+j)>=0) && ((x-1+i)<width) && ((y-1+j)<height)) {
-					int value = array2d[x-1+i][y-1+j];
-					if (value < min) {
-						min = value;
-					}
-				}
-			}
-		}
-
-		return min;
-	}
-	
-	private int[][] create2DIntArray(byte[] pix, int width, int height) {
-		int[][] array2d = new int[width][height];
-		
-		for (int i = 0; i<width; i++) {
-			for(int j = 0; j < height; j++) {
-				array2d[i][j] = pix[i+(j*width)];
-			}
-		}
-		return array2d;
-	}
-	
-	private int[] array_2d_to_1d(int[][] values, int width, int height) {
-		int[] output = new int [width*height];
-		
-		for(int i=0;i<width;i++) {
-			for(int j=0;j<height;j++) {
-				output[i+(j*width)] = values[i][j];
-			}
-		}
-		
-		return output;
-	}
-	
 		
 	void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
-	}
-	
-	//Called by the system when the plugin is run. [arg is selected by the user at that time]
-	public int setup(String arg, ImagePlus imp) {
-		this.image = imp;
-		this.X = image.getWidth();
-		this.Y = image.getHeight();
-		this.Z = image.getStackSize();
-		if (arg.equals("about")) {
-			showAbout();
-			return DONE; //These enums are defined in PlugInFilter.
-		}
-		return DOES_8G+SUPPORTS_MASKING;
 	}
 	
 }

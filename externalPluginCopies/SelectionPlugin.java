@@ -370,4 +370,53 @@ public class SelectionPlugin {
 		//ip.setCalibrationTable(cTable);
 	}
 	
+		//method copied across from https://imagej.nih.gov/ij/developer/source/ij/plugin/RoiEnlarger.java.html
+	public Roi enlargeRoi(Roi roi) {
+		roi = (Roi) roi.clone();
+		int type = roi.getType();
+        int n = ENLARGE_FACTOR;
+        if (type==Roi.RECTANGLE || type==Roi.OVAL)
+            return enlargeRectOrOval(roi, n);
+        Rectangle bounds = roi.getBounds();
+        int width = bounds.width;
+        int height = bounds.height;
+        width += 2*n +2;
+        height += 2*n +2;
+        ImageProcessor ip = new ByteProcessor(width, height);
+        ip.invert();
+        roi.setLocation(n+1, n+1);
+        ip.setColor(0);
+        ip.fill(roi);
+        roi.setLocation(bounds.x, bounds.y);
+        boolean bb = Prefs.blackBackground;
+        Prefs.blackBackground = true;
+        new EDM().toEDM(ip);
+        //new ImagePlus("ip", ip).show();
+        Prefs.blackBackground = bb;
+        ip.setThreshold(0, n, ImageProcessor.NO_LUT_UPDATE);
+        Roi roi2 = (new ThresholdToSelection()).convert(ip);
+        if (roi2==null)
+            return roi;
+        roi2.setLocation(bounds.x-n, bounds.y-n);
+        roi2.setStrokeColor(roi.getStrokeColor());
+        if (roi.getStroke()!=null)
+            roi2.setStroke(roi.getStroke());
+        return roi2;
+	}
+	
+	    
+    private Roi enlargeRectOrOval(Roi roi, int n) {
+        Rectangle bounds = roi.getBounds();
+        bounds.x -= n;
+        bounds.y -= n;
+        bounds.width += 2*n;
+        bounds.height += 2*n;
+        if (bounds.width<=0 || bounds.height<=0)
+            return roi;
+        if (roi.getType()==Roi.RECTANGLE)
+            return new Roi(bounds.x, bounds.y, bounds.width, bounds.height);
+        else
+            return new OvalRoi(bounds.x, bounds.y, bounds.width, bounds.height);
+    }
+	
 }
