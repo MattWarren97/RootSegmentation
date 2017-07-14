@@ -39,14 +39,17 @@ public class Global_Iterative implements PlugInFilter {
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
+	SelectionPlugin selectionPlugin;
 	//idea is to use ip.clone() -- creates an ip that shares the same pixel array, then use the getPixelsCopy() method and set the new ipcopy to that.
 	//then try to mask on that, so I can implement the adjustGaussMeanStd method...
 
 	public Global_Iterative() {
 		System.err.println("Initialising log");
 		callCount = 0;
-		gauss_mean = 84;
+		gauss_mean = 112;
+		//gauss_mean=84;
 		gauss_std = 4.5;
+		selectionPlugin = new SelectionPlugin();
 	}
 	
 	public void run(ImageProcessor ip) {
@@ -70,7 +73,9 @@ public class Global_Iterative implements PlugInFilter {
 		}
 		image = new ImagePlus("distance transformed", byteStack);
 		
-		PointRoi point = new PointRoi((int) X/2, (int) Y/2); //TODO: Guarantee that this point will be in the selection...
+		Roi centralRoi = selectionPlugin.selectCentralObject(image);
+		Point contained = centralRoi.getContainedPoints()[0];
+		PointRoi point = new PointRoi(contained.x, contained.y);
 		
 		image.setRoi(point);
 		//image.show();
@@ -110,7 +115,7 @@ public class Global_Iterative implements PlugInFilter {
 		
 		//iPlus.show();
 
-		Roi selectionRoi = selectFromMask(iPlus);
+		Roi selectionRoi = selectionPlugin.selectFromMask(iPlus);
 		
 		applyRoi(iPlusCopy, selectionRoi);
 
@@ -138,42 +143,6 @@ public class Global_Iterative implements PlugInFilter {
 		
 	}
 		
-	
-	//method derived from https://imagej.nih.gov/ij/source/ij/plugin/Selection.java
-	//All I've done is rewritten that method to be more convenient [doesn't need an ImageWindow object]
-	
-	private Roi selectFromMask(ImagePlus iPlus) {
-		ImageProcessor ip = iPlus.getProcessor();
-		
-		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
-		if (!ip.isBinary()) {
-			IJ.error("SelectionFromMask", "Image not recognised as binary image, selection from mask impossible, on image: " + callCount);
-			return null;
-		}
-		
-
-		int threshold = ip.isInvertedLut()?0:255;
-		//only values equal to white will be selected.
-		ip.setThreshold(threshold, threshold, ImageProcessor.NO_LUT_UPDATE);
-		
-		
-		//IJ.runPlugIn("ij.plugin.filter.ThresholdToSelection", "");
-		//Trying to simulate the exact same thing below, but:
-		//my method here doesn't include the line:
-		//'tts.setup(" ", WindowManager.getCurrentImage()) [paraphrased].
-		//I want to be able to just pass in the ImagePlus to use.
-		ThresholdToSelection tts = new ThresholdToSelection();
-		tts.setup("", iPlus);
-		
-		
-		prepareProcessor(ip, iPlus);
-		System.out.println("Min: " + ip.getMinThreshold() + ", max: " + ip.getMaxThreshold());
-		
-		tts.run(ip);
-
-		Roi selectionRoi = iPlus.getRoi();
-		return selectionRoi;
-	}
 	
 	//I don't know how much of this method is actually required for ThresholdToSelection, but I'll use it all for now.
 	//from https://github.com/imagej/imagej1/blob/master/ij/plugin/filter/PlugInFilterRunner.java
@@ -351,7 +320,7 @@ public class Global_Iterative implements PlugInFilter {
 		return output;
 	}
 	
-	
+		
 	void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
 	}
