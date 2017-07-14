@@ -318,7 +318,6 @@ public class SelectionPlugin {
 	public Roi selectFromMask(ImagePlus iPlus) {
 		ImageProcessor ip = iPlus.getProcessor();
 		
-		System.out.println("Binary: " + ip.isBinary() + ", Grayscale: " + ip.isGrayscale() + ", defaultLUT: " + ip.isDefaultLut());
 		if (!ip.isBinary()) {
 			IJ.error("SelectionFromMask", "Image not recognised as binary image");
 			return null;
@@ -340,7 +339,6 @@ public class SelectionPlugin {
 		
 		
 		prepareProcessor(ip, iPlus);
-		System.out.println("Min: " + ip.getMinThreshold() + ", max: " + ip.getMaxThreshold());
 		
 		tts.run(ip);
 

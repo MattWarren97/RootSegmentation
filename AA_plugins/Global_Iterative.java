@@ -24,14 +24,12 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	
 	static final int MED_RD = 5;
 
-	int callCount;
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
 
 	public Global_Iterative() {
 		super();
-		callCount = 0;
 		gauss_mean = 112;
 		//gauss_mean=84;
 		gauss_std = 4.5;
@@ -40,8 +38,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	public void run(ImageProcessor ip) {
 		ImageStack stack = image.getStack();
 		int stackSize = stack.getSize();
-		for (int i = 1; i <= stackSize; i++) {
-			ImageProcessor nextSlice = stack.getProcessor(i);
+		for (sliceNumber = 1; sliceNumber <= stackSize; sliceNumber++) {
+			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			calculate(nextSlice);
 			nextSlice.invert();
 		}
@@ -50,10 +48,10 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		image = edt.performTransform(image); //returns a new object - a float image.
 		stack = image.getStack();
 		ImageStack byteStack = new ImageStack(X, Y, Z);
-		for (int i = 1; i<= stackSize; i++) {
-			ImageProcessor nextSlice = stack.getProcessor(i);
+		for (int sliceNumber = 1; sliceNumber<= stackSize; sliceNumber++) {
+			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
-			byteStack.setProcessor(ip, i);
+			byteStack.setProcessor(ip, sliceNumber);
 			applyThreshold(ip, 0, 15);
 		}
 		image = new ImagePlus("distance transformed", byteStack);
@@ -70,10 +68,10 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		
 		stack = image.getStack(); //all images are 16 bits.
 		byteStack = new ImageStack(X, Y, Z);
-		for (int i = 1; i <= stackSize; i++) {
-			ImageProcessor nextSlice = stack.getProcessor(i);
+		for (int sliceNumber = 1; sliceNumber <= stackSize; sliceNumber++) {
+			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
-			byteStack.setProcessor(ip, i);
+			byteStack.setProcessor(ip, sliceNumber);
 			applyThreshold(ip, 1, 255); //original image returns binary pixel values.
 		}
 		image = new ImagePlus("Final 8-bit display", byteStack);
@@ -86,7 +84,6 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	public void calculate(ImageProcessor ip) {
 		
 		//System.err.println("Ooh look I'm running its me I'm running ooh look");
-		callCount++;
 		ipCopy = (ImageProcessor) ip.clone();
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
@@ -95,8 +92,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		applyThreshold(ip, 75, 255);
 		filterPlugin.applyFilter(ip, 2, FilterType.MIN);
 
-		ImagePlus iPlus = new ImagePlus("ip" + callCount, ip);
-		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + callCount, ipCopy);
+		ImagePlus iPlus = new ImagePlus("ip" + sliceNumber, ip);
+		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + sliceNumber, ipCopy);
 		
 		//iPlus.show();
 
@@ -120,7 +117,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		//if (gauss_std > 4.5) {
 			gauss_std = 4.5;
 		//}
-		System.out.println("Image: " + callCount + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
+		System.out.println("Image: " + sliceNumber + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
 		
 		
 		iPlusCopy.deleteRoi();
@@ -137,7 +134,6 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		//but I'm not quite sure how to do that, so will do it here in two steps (threshold, mask) that both need to create their own image.
 		
 
-		//System.err.println("Call count is aaa " + callCount);
 		byte[] pixels = (byte[]) ip.getPixels();
 		
 		int width = ip.getWidth();

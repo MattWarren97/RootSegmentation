@@ -23,25 +23,26 @@ import AA_plugins.*;
 
 public class FilterPlugin {
 	
-	SegmentationPlugin segmentationPlugin;
 	
 	public enum FilterType {
 		MEDIAN,
 		MIN
 	}
 	
-	public FilterPlugin(SegmentationPlugin segmentationPlugin) {
-		this.segmentationPlugin = segmentationPlugin;
+	public FilterPlugin() {
+
 	}
 		
 	
 		//this implementation from http://svg.dmi.unict.it/iplab/imagej/Plugins/Forensics/Median_filter2/Median_Filter.html
 	public void applyFilter(ImageProcessor ip, int radius, FilterType filter) {
-
-		int width = segmentationPlugin.X;
-		int height = segmentationPlugin.Y;
+		
+		Rectangle r = ip.getRoi();
+		int width = (int) r.getWidth();
+		int height = (int) r.getHeight();
 		
 		byte[] pixels = (byte[]) ip.getPixels();
+
 		
 		int[] tmp=new int[pixels.length];
 		for (int i=0;i<pixels.length;i++)
@@ -115,6 +116,7 @@ public class FilterPlugin {
 		for (int i = 0; i<width; i++) {
 			for(int j = 0; j < height; j++) {
 				array2d[i][j] = pix[i+(j*width)];
+
 			}
 		}
 		return array2d;
