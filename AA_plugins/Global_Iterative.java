@@ -76,18 +76,19 @@ public class Global_Iterative implements PlugInFilter {
 		//image.show();
 		FindConnectedRegions fcr = new FindConnectedRegions();
 		image = fcr.calculate(image);
-		image.show();
-		/*
-		stack = image.getStack();
+		//image.show();
+		
+		stack = image.getStack(); //all images are 16 bits.
 		byteStack = new ImageStack(X, Y, Z);
 		for (int i = 1; i <= stackSize; i++) {
 			ImageProcessor nextSlice = stack.getProcessor(i);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, i);
+			applyThreshold(ip, 1, 255); //original image returns binary pixel values.
 		}
 		image = new ImagePlus("Final 8-bit display", byteStack);
 		image.show();
-		*/
+		
 		//applyThreshold(ip, 0, 11);
 		
 	}
