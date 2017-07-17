@@ -99,6 +99,7 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 		
 		ImageStack stack = image.getStack();
 		int stackSize = stack.getSize();
+		System.out.println("stack size is " + stackSize);
 		
 		//get the user to select an inital location (and slice) of a root leaving the stem.
 		//set zTarget to the Z location
@@ -107,6 +108,8 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 		for (sliceNumber = zStart; sliceNumber <= stackSize; sliceNumber++) {
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			
+			System.out.println("Slice no. " + sliceNumber + " - " + nextSlice);
+			
 			System.out.println("Image " + sliceNumber + ":");
 			
 			Rectangle bounds = focusArea.getBounds();
@@ -114,20 +117,27 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 			focusArea.setLocation(xStart, yStart);
 			
 			try {
-				focusArea = selectionPlugin.enlargeRoi(focusArea, ENLARGE_FACTOR);
+				if (prevArea < 5000) {
+					focusArea = selectionPlugin.enlargeRoi(focusArea, ENLARGE_FACTOR);
+				}
+				else {
+					System.out.println("prev Area is " + prevArea + " - no more enlargement");
+				}
 				//TODO - I think enlargeRoi might increase the size of the image (instead of 'out of bounds'... Don't want that.
 			} catch (Exception e) {
 				System.err.println("Selection on image " + sliceNumber + " was too small to enlarge -- exception thrown");
 			}
 			
-			ImageProcessor measureCopy = (ImageProcessor) ip.clone();
-			measureCopy.setPixels(ip.getPixelsCopy());
+			ImageProcessor measureCopy = (ImageProcessor) nextSlice.clone();
+			measureCopy.setPixels(nextSlice.getPixelsCopy());
 			measureCopy.setRoi(focusArea);
 			
 			measureCopy = measureCopy.crop();
 			measureCopy.resetRoi();
 			
 			ImagePlus measurePlus = new ImagePlus("measurementsCopy" + sliceNumber, measureCopy);
+			
+			System.out.println(focusArea);
 			ImagePlus transformed;
 			
 			Roi selectionRoi;		
@@ -151,8 +161,14 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 				//while the area is not 'acceptable'.
 				//measurePlus is the untouched copy.
 				measurePlus.deleteRoi();
+				//measurePlus.setTitle(sliceNumber + " - Before transformations " + xStart + ", " + yStart);
+				//measurePlus.show();
+				
 				transformed = performTransformations(measureCopy);
+				//transformed.setTitle(sliceNumber + " - measurementsCopy");
+				//transformed.show();
 				selectionRoi = selectionPlugin.selectCentralObject(transformed);
+				System.out.println("selectionRoi: " + selectionRoi);
 				
 				applyRoi(measurePlus, selectionRoi, (int) selectionRoi.getXBase(), (int) selectionRoi.getYBase());
 				
@@ -164,7 +180,7 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 				newStd = rt.getValue("StdDev", rt.getCounter()-1);
 				area = rt.getValue("Area", rt.getCounter()-1);
 				System.out.println("Image: " + sliceNumber + ", AREA is " + area + ", mean is " + newMean + ", Measured Std_dev is " + newStd);
-				
+
 		
 				if (area <= (1/2) * prevArea) {
 					gauss_std += 2;
@@ -194,35 +210,39 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 			prevArea = area;
 			areas[sliceNumber-zStart] = (int) area;
 			
-			//displaying the changes on the imageprocessor that was passed in.
+			//displaying the changes on the imageprocessor.
 			Roi offsetRoi = (Roi) selectionRoi.clone();
+			
 			offsetRoi.setLocation(xStart, yStart);
 			try {
-				ip.setRoi(offsetRoi);
+				nextSlice.setRoi(offsetRoi);
 			} catch (Exception e) {
 				System.err.println("Width and Height were probably 0..., on image " + sliceNumber);
 			}
 			
-			System.out.println("the roi being added to this image is x,y,wid,hei: " + xStart + "," + yStart + "," + offsetRoi.getBounds().getWidth() + "," + offsetRoi.getBounds().getHeight());
-			ip.setColor(Color.WHITE);
-			ip.fill();
+			System.out.println("the roi being added to this image is x,y,wid,hei: " + xStart + "," + yStart + "," + selectionRoi.getBounds().getWidth() + "," + selectionRoi.getBounds().getHeight());
+			nextSlice.setColor(Color.WHITE);
+			//ImagePlus nextSlicePlus = new ImagePlus("wawoefwoaeji", nextSlice);
+			//nextSlicePlus.setRoi(offsetRoi);
 			
-			ImagePlus iPlus = new ImagePlus("" + sliceNumber, ip);
-			iPlus.show();
+			//Fill seems to be converting the roi to be a square..... hmm.
+			System.out.println(nextSlice.getRoi());
+			nextSlice.fill(offsetRoi);
+			System.out.println(nextSlice.getRoi());
+			//nextSlicePlus.show();
+			
+			ImagePlus iPlus = new ImagePlus("" + sliceNumber, nextSlice);
+			//iPlus.show();
 
 			
 			focusArea = selectionRoi;
 			//System.out.println("new focus area was- X: " + ((int) focusArea.getXBase()) + ", Y: " + ((int) focusArea.getYBase()));
+			System.out.println("x,ybases: " + focusArea.getXBase() + " " + focusArea.getYBase());
 			xStart -= (ENLARGE_FACTOR-focusArea.getXBase());
 			yStart -= (ENLARGE_FACTOR-focusArea.getYBase());
 			//System.out.println("new xStart, yStart is " + xStart + ", " + yStart);
 
 			measurePlus.deleteRoi();	
-			try {
-				Thread.sleep(5000);
-			}
-			catch (Exception e) {
-			}
 		}
 	}
 	
