@@ -54,11 +54,11 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 		focusArea = new Roi(new Rectangle(0, 0, 15, 22));*/
 				
 		//top left - works very well
-		gauss_mean = 85;
+		/*gauss_mean = 85;
 		xStart = 235;
 		yStart = 222;
 		focusArea = new Roi(new Rectangle(0, 0, 17, 13));
-		zStart = 98;
+		zStart = 98;*/
 		
 		//bottom left - works not too badly
 		/*gauss_mean = 85;
@@ -82,11 +82,11 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 		//zStart = 127;
 		
 		//the top right long shape in resliced 613_300_613.
-		/*gauss_mean = 96.6;
+		gauss_mean = 96.6;
 		focusArea = new Roi(new Rectangle(0,0,5,9));
 		xStart = 267;
 		yStart = 155;
-		zStart = 216;*/
+		zStart = 216;
 		
 
 	}
@@ -117,7 +117,7 @@ public class Local_Iterative extends SegmentationPlugin implements PlugInFilter 
 			focusArea.setLocation(xStart, yStart);
 			
 			try {
-				if (prevArea < 5000) {
+				if (prevArea < 2000) {
 					focusArea = selectionPlugin.enlargeRoi(focusArea, ENLARGE_FACTOR);
 				}
 				else {
