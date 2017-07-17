@@ -1,0 +1,5 @@
+Scan Keys:
+
+A: \\Roose_group\M_Warren\Laura_data\20131114_HUTCH_499_SIA_5050_02\20131114_HUTCH_499_SIA_5050_02.vol
+A is cropped with makeOval(195, 117, 1677, 1710)
+we decided on bounds for Brightness/Contrast of Mode and (Mode-3*SD) -- here is -4 and 29 (ish)
