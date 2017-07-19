@@ -116,6 +116,14 @@ public class Conversion_ implements PlugInFilter  {
 		//this.adjustBrightnessContrast(); to be called after this...
 	}
 	
+	public void completedCircleSelection(Roi topEllipse, Roi bottomEllipse) {
+		System.out.println("here");
+		this.image.setRoi(topEllipse);
+		image = this.image.duplicate();
+		image.show();
+		System.out.println("Image is virtual: " + image.getStack().isVirtual());
+	}
+	
 	public void adjustBrightnessContrast() {
 		
 		new StackStatistics(this.image);
@@ -203,8 +211,8 @@ class SelectCircles extends BasicFrame {
 	JButton selectBottomRoi;
 	
 	ImagePlus displayedSlice;
-	Roi topEllipse;
-	Roi bottomEllipse;
+	public Roi topEllipse;
+	public Roi bottomEllipse;
 	ImageStack stack;
 	
 	public SelectCircles(Conversion_ plugin) {
@@ -280,6 +288,7 @@ class SelectCircles extends BasicFrame {
 		}
 		displayedSlice.changes = false;
 		displayedSlice.close();
+		this.plugin.completedCircleSelection(this.topEllipse, this.bottomEllipse);
 		
 	}
 }
