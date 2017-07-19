@@ -28,22 +28,28 @@ public class Conversion_ implements PlugInFilter  {
 	Integer topSliceNumber;
 	Integer bottomSliceNumber;
 	public static String success = "Success!";
+	
+	
 	public Conversion_() {
 		System.err.println("Initialising log");
 	}
 	
-	public void run(ImageProcessor ip) {
-		System.out.println(ip.getBitDepth());
-		SelectTopBottom frame = new SelectTopBottom(this);
-	}
-	
-		//Called by the system when the plugin is run. [arg is selected by the user at that time]
+	//Called by the system when the plugin is run. [arg is potentially selected by the user at that time]
 	public int setup(String arg, ImagePlus imp) {
 		this.image = imp;
 		System.out.println("Stack size: " + image.getStackSize());
 
 		return DOES_16 + DOES_32 + DOES_8G + PARALLELIZE_STACKS + SUPPORTS_MASKING;
 	}
+	
+	public void run(ImageProcessor ip) {
+		System.out.println(ip.getBitDepth());
+		new SelectTopBottom(this);
+
+		
+	}
+	
+
 	
 	public void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
@@ -94,18 +100,43 @@ public class Conversion_ implements PlugInFilter  {
 			newImage.show();
 			this.image.changes = false;
 			this.image.close();
+			this.image = newImage;
 		}
 		else {
 			return "ERROR: Conversion expects a virtual stack";
 		}
 		return Conversion_.success;
-
+	}
+	
+	//called by the bothSelected button's actionListener in SelectTopBottom... hmmm might want to try and make this control flow a little more sensible.
+	public void selectCircles() {
+		
+		this.image.hide();
+		new SelectCircles(this);
+		//this.adjustBrightnessContrast(); to be called after this...
+	}
+	
+	public void adjustBrightnessContrast() {
+		
+		new StackStatistics(this.image);
+		
+		
 	}
 }
 
+class BasicFrame extends JFrame {
+	Conversion_ plugin;
+	
+	public BasicFrame(Conversion_ plugin) {
+		this.plugin = plugin;
+		this.setTitle("Segmentation");
+		this.setSize(500,500);
+		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		this.setLayout(new FlowLayout());
+	}
+}
 
-
-class SelectTopBottom extends JFrame {
+class SelectTopBottom extends BasicFrame {
 	JButton topSelect;
 	JButton bottomSelect;
 	
@@ -113,13 +144,9 @@ class SelectTopBottom extends JFrame {
 	JLabel bottomSliceLabel;
 	
 	JButton bothSelected;
-	Conversion_ plugin;
 	public SelectTopBottom(Conversion_ plugin) {
 		
-		this.plugin = plugin;
-		this.setTitle("Segmentation");
-		this.setSize(500,500);
-		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		super(plugin);
 		
 		topSelect = new JButton("Press when the top slice is selected");
 		bottomSelect = new JButton("Press when the bottom slice is selected");
@@ -136,6 +163,7 @@ class SelectTopBottom extends JFrame {
 					System.out.println("SelectTopBottom - " + Conversion_.success);
 					//Close the SelectTopBottom window
 					SelectTopBottom.this.dispatchEvent(new WindowEvent(SelectTopBottom.this, WindowEvent.WINDOW_CLOSING));
+					SelectTopBottom.this.plugin.selectCircles();
 					
 				}
 				else {
@@ -158,7 +186,6 @@ class SelectTopBottom extends JFrame {
 			}
 		});
 		
-		this.setLayout(new FlowLayout());
 		this.add(topSelect);
 		this.add(topSliceLabel);
 		this.add(bottomSelect);
@@ -167,6 +194,93 @@ class SelectTopBottom extends JFrame {
 		this.add(bothSelected);
 		
 		this.setVisible(true);
+	}
+}
+
+class SelectCircles extends BasicFrame {
+	
+	JButton selectTopRoi;
+	JButton selectBottomRoi;
+	
+	ImagePlus displayedSlice;
+	Roi topEllipse;
+	Roi bottomEllipse;
+	ImageStack stack;
+	
+	public SelectCircles(Conversion_ plugin) {
+		super(plugin);
+		//display the top image.
+		stack = this.plugin.image.getStack();
+		
+		
+		selectTopRoi = new JButton("Selected top ellipse");
+		selectTopRoi.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SelectCircles.this.topEllipse = displayedSlice.getRoi();
+				if (SelectCircles.this.topEllipse == null) {
+					JOptionPane.showMessageDialog(null, "Please select an roi, then click 'Selected top ellipse'");
+				}
+				else {
+				SelectCircles.this.selectBottomRoi.setEnabled(true);
+				SelectCircles.this.getLastEllipse();
+				}
+			}
+		});
+		
+		selectBottomRoi = new JButton("Selected bottom ellipse");
+		selectBottomRoi.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SelectCircles.this.bottomEllipse = displayedSlice.getRoi();
+				if (SelectCircles.this.bottomEllipse == null) {
+					JOptionPane.showMessageDialog(null, "Please select an roi, then click 'Selected bottom ellipse'");
+				}
+			}
+		});
+		
+		this.add(selectTopRoi);
+		this.add(selectBottomRoi);
+		this.selectBottomRoi.setEnabled(false);
+		this.setVisible(true);
+		
+
+		getFirstEllipse();
+		
+	}
+	
+	void getFirstEllipse() {
+		ImageProcessor ip_one = stack.getProcessor(1);
+		displayedSlice = new ImagePlus("First Image - please select roi", ip_one);
+		displayedSlice.show();
+	}
+	
+	void getLastEllipse() {
+		ImageProcessor ip_last = stack.getProcessor(stack.getSize());
+		displayedSlice.changes = false;
+		displayedSlice.close();
+		
+		displayedSlice = new ImagePlus("Last image - please select roi", ip_last);
+		displayedSlice.setRoi(topEllipse);
+		displayedSlice.show();
+		switch (JOptionPane.showConfirmDialog(null, "Currently the top ellipse is overlayed - is this roi ok?")) {
+			case JOptionPane.YES_OPTION:
+				System.out.println("Same ellipse is ok!");
+				bottomEllipse = topEllipse;
+				break;
+			case JOptionPane.NO_OPTION:
+				System.err.println("Selecting a different ellipse is not implemented yet.");
+				bottomEllipse = topEllipse;
+				break;
+			case JOptionPane.CANCEL_OPTION:
+				System.err.println("Cancel was pressed. The same ellipse option will be used.");
+				bottomEllipse = topEllipse;
+				break;
+			default:
+				System.err.println("in getLastEllipse neither JOptionPaneOption was selected.");
+				break;
+		}
+		displayedSlice.changes = false;
+		displayedSlice.close();
+		
 	}
 }
 
