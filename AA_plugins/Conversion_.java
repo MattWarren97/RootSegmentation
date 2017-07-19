@@ -92,6 +92,8 @@ public class Conversion_ implements PlugInFilter  {
 			}
 			ImagePlus newImage = new ImagePlus("aa", stack);
 			newImage.show();
+			this.image.changes = false;
+			this.image.close();
 		}
 		else {
 			return "ERROR: Conversion expects a virtual stack";
