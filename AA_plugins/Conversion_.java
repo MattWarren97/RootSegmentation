@@ -90,7 +90,7 @@ public class Conversion_ implements PlugInFilter  {
 		if (stack.isVirtual()) {
 
 			for (int i = 1; i < topSliceNumber; i++) {
-				stack.deleteSlice(i);
+				stack.deleteSlice(1);
 			}
 			for (int i = 0; i < bottomSliceRelativeToBottomStack; i++) {
 				//delete the last slice the correct number of times (each iteration changes stack.getSize())
@@ -119,14 +119,22 @@ public class Conversion_ implements PlugInFilter  {
 	public void completedCircleSelection(Roi topEllipse, Roi bottomEllipse) {
 		System.out.println("here");
 		this.image.setRoi(topEllipse);
+		System.out.println("DUPLICATING INTO RAM BEGIN: This will take a while, no loading bar yet...");
 		image = this.image.duplicate();
 		image.show();
-		System.out.println("Image is virtual: " + image.getStack().isVirtual());
+		topEllipse.setLocation(0, 0);
+		image.setRoi(topEllipse);
+		
+		adjustBrightnessContrast();
 	}
 	
 	public void adjustBrightnessContrast() {
 		
-		new StackStatistics(this.image);
+		System.out.println(this.image.getWidth()*this.image.getHeight()*this.image.getStack().getSize());
+		//StackStatistics stats = new StackStatistics(this.image);
+		//System.out.println(stats);
+		
+		//System.out.println("Area: " + stats.area + ", mode " + stats.mode + ", dmode " + stats.dmode + ", stdDev " + stats.stdDev);
 		
 		
 	}
