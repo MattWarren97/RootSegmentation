@@ -34,7 +34,7 @@ public class Conversion_ implements PlugInFilter  {
 	
 	public void run(ImageProcessor ip) {
 		System.out.println(ip.getBitDepth());
-		SegmentUI frame = new SegmentUI(this);
+		SelectTopBottom frame = new SelectTopBottom(this);
 	}
 	
 		//Called by the system when the plugin is run. [arg is selected by the user at that time]
@@ -101,11 +101,11 @@ public class Conversion_ implements PlugInFilter  {
 		return Conversion_.success;
 
 	}
-	
-
-			
 }
-class SegmentUI extends JFrame {
+
+
+
+class SelectTopBottom extends JFrame {
 	JButton topSelect;
 	JButton bottomSelect;
 	
@@ -114,15 +114,15 @@ class SegmentUI extends JFrame {
 	
 	JButton bothSelected;
 	Conversion_ plugin;
-	public SegmentUI(Conversion_ plugin) {
+	public SelectTopBottom(Conversion_ plugin) {
 		
 		this.plugin = plugin;
 		this.setTitle("Segmentation");
 		this.setSize(500,500);
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		
 		topSelect = new JButton("Press when the top slice is selected");
-		bottomSelect = new JButton("Press when the button slice is selected");
+		bottomSelect = new JButton("Press when the bottom slice is selected");
 		
 		topSliceLabel = new JLabel("Current top slice number: ");
 		bottomSliceLabel = new JLabel("Current bottom slice number: ");
@@ -131,9 +131,12 @@ class SegmentUI extends JFrame {
 		bothSelected.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				String errorMessage = SegmentUI.this.plugin.cropImage();
+				String errorMessage = SelectTopBottom.this.plugin.cropImage();
 				if (errorMessage == Conversion_.success) {
-					System.out.println(Conversion_.success);
+					System.out.println("SelectTopBottom - " + Conversion_.success);
+					//Close the SelectTopBottom window
+					SelectTopBottom.this.dispatchEvent(new WindowEvent(SelectTopBottom.this, WindowEvent.WINDOW_CLOSING));
+					
 				}
 				else {
 					//display an error message
@@ -144,14 +147,14 @@ class SegmentUI extends JFrame {
 				
 		topSelect.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				int topSliceNumber = SegmentUI.this.plugin.setTopSlice();
-				SegmentUI.this.topSliceLabel.setText("Current top slice number: " + topSliceNumber);
+				int topSliceNumber = SelectTopBottom.this.plugin.setTopSlice();
+				SelectTopBottom.this.topSliceLabel.setText("Current top slice number: " + topSliceNumber);
 			}
 		});
 		bottomSelect.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				int bottomSliceNumber = SegmentUI.this.plugin.setBottomSlice();
-				SegmentUI.this.bottomSliceLabel.setText("Current bottom slice number: " + bottomSliceNumber);
+				int bottomSliceNumber = SelectTopBottom.this.plugin.setBottomSlice();
+				SelectTopBottom.this.bottomSliceLabel.setText("Current bottom slice number: " + bottomSliceNumber);
 			}
 		});
 		
