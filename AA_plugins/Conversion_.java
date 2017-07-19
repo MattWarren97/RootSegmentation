@@ -79,10 +79,23 @@ public class Conversion_ implements PlugInFilter  {
 			return "topSliceNumber must be lower than bottomSliceNumber";
 		}
 		
-		ImageStack originalStack = this.image.getStack();
-		ImageStack newStack = originalStack.crop(0,0,topSliceNumber, originalStack.getWidth(), originalStack.getHeight(), bottomSliceNumber);
-		ImagePlus newImage = new ImagePlus("aa", newStack);
-		newImage.show();
+		ImageStack stack = this.image.getStack();
+		int bottomSliceRelativeToBottomStack = stack.getSize() - bottomSliceNumber;
+		if (stack.isVirtual()) {
+
+			for (int i = 1; i < topSliceNumber; i++) {
+				stack.deleteSlice(i);
+			}
+			for (int i = 0; i < bottomSliceRelativeToBottomStack; i++) {
+				//delete the last slice the correct number of times (each iteration changes stack.getSize())
+				stack.deleteSlice(stack.getSize());
+			}
+			ImagePlus newImage = new ImagePlus("aa", stack);
+			newImage.show();
+		}
+		else {
+			return "ERROR: Conversion expects a virtual stack";
+		}
 		return Conversion_.success;
 
 	}
