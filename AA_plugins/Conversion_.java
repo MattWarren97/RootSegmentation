@@ -116,27 +116,57 @@ public class Conversion_ implements PlugInFilter  {
 		//this.adjustBrightnessContrast(); to be called after this...
 	}
 	
-	public void completedCircleSelection(Roi topEllipse, Roi bottomEllipse) {
-		System.out.println("here");
+	public void completedCircleSelection(Roi topEllipse, Roi bottomEllipse, boolean reverse) {
+		System.out.println("a");
 		this.image.setRoi(topEllipse);
-		System.out.println("DUPLICATING INTO RAM BEGIN: This will take a while, no loading bar yet...");
+		int a = 2;
+		System.out.println("DUPLICATING INTO RAM BEGIN: This will take a while, no loading bar yet..." + a);
+		System.out.println("This is probably printed after duplicating!?????!!? It was called before......");
+		a = 5;
 		image = this.image.duplicate();
+		
+		if (reverse) {
+			reverseStack();
+		}
 		image.show();
 		topEllipse.setLocation(0, 0);
-		image.setRoi(topEllipse);
 		
+		image.setRoi(topEllipse);
 		adjustBrightnessContrast();
 	}
 	
 	public void adjustBrightnessContrast() {
 		
 		System.out.println(this.image.getWidth()*this.image.getHeight()*this.image.getStack().getSize());
-		//StackStatistics stats = new StackStatistics(this.image);
+		StackStatistics stats = new StackStatistics(this.image);
 		//System.out.println(stats);
 		
 		//System.out.println("Area: " + stats.area + ", mode " + stats.mode + ", dmode " + stats.dmode + ", stdDev " + stats.stdDev);
+		System.out.println("Mode: " + stats.dmode + ", Mode - 3*SD: " + (stats.dmode - 3*stats.stdDev));
+		double min = stats.dmode-3*stats.stdDev;
+		double max = stats.dmode;
+		this.image.setDisplayRange(min, max);
+		this.image.show();
 		
-		
+	}
+	
+	//copied and modified from https://imagej.nih.gov/ij/source/ij/plugin/StackReverser.java
+	//https://imagej.nih.gov/ij/plugins/reverser.html
+	public void reverseStack() {
+		ImageStack stack = this.image.getStack();
+		int n = stack.getSize();
+		if (n == 1) return;
+		ImageStack stack2 = new ImageStack(this.image.getWidth(), this.image.getHeight(), n);
+		for (int i = 1; i <= n; i++) {
+			stack2.setPixels(stack.getPixels(i), (n-i+1));
+			stack2.setSliceLabel(stack.getSliceLabel(i),n-i+1);
+		}
+		//stack2.getColorModel(stack.getColorModel());
+		this.image.setStack(stack2);
+		/*if (this.image.isComposite()) {
+			((CompositeImage)this.image).reset();
+			this.image.updateAndDraw();
+		}*/
 	}
 }
 
@@ -158,8 +188,8 @@ class SelectTopBottom extends BasicFrame {
 	
 	JLabel topSliceLabel;
 	JLabel bottomSliceLabel;
-	
 	JButton bothSelected;
+	
 	public SelectTopBottom(Conversion_ plugin) {
 		
 		super(plugin);
@@ -217,6 +247,8 @@ class SelectCircles extends BasicFrame {
 	
 	JButton selectTopRoi;
 	JButton selectBottomRoi;
+	JCheckBox reverseStack;
+	JButton go;
 	
 	ImagePlus displayedSlice;
 	public Roi topEllipse;
@@ -250,12 +282,25 @@ class SelectCircles extends BasicFrame {
 				if (SelectCircles.this.bottomEllipse == null) {
 					JOptionPane.showMessageDialog(null, "Please select an roi, then click 'Selected bottom ellipse'");
 				}
+				else {
+					SelectCircles.this.displayedSlice.changes = false;
+					SelectCircles.this.displayedSlice.close();
+				}
 			}
 		});
+		reverseStack = new JCheckBox("reverse stack on duplicating?");
 		
+		go = new JButton("Use this selection");
+		go.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SelectCircles.this.plugin.completedCircleSelection(SelectCircles.this.topEllipse, SelectCircles.this.bottomEllipse, SelectCircles.this.reverseStack.isSelected());
+			}
+		});
 		this.add(selectTopRoi);
 		this.add(selectBottomRoi);
 		this.selectBottomRoi.setEnabled(false);
+		this.add(reverseStack);
+		this.add(go);
 		this.setVisible(true);
 		
 
@@ -277,6 +322,8 @@ class SelectCircles extends BasicFrame {
 		displayedSlice = new ImagePlus("Last image - please select roi", ip_last);
 		displayedSlice.setRoi(topEllipse);
 		displayedSlice.show();
+		
+		/*System.out.println("switch stmnt reached");
 		switch (JOptionPane.showConfirmDialog(null, "Currently the top ellipse is overlayed - is this roi ok?")) {
 			case JOptionPane.YES_OPTION:
 				System.out.println("Same ellipse is ok!");
@@ -294,9 +341,18 @@ class SelectCircles extends BasicFrame {
 				System.err.println("in getLastEllipse neither JOptionPaneOption was selected.");
 				break;
 		}
+		System.out.println("Switch stmnt ended");
 		displayedSlice.changes = false;
 		displayedSlice.close();
+		System.out.println("Completed circle selection!");
 		this.plugin.completedCircleSelection(this.topEllipse, this.bottomEllipse);
+		try {
+			//this is so weird. Why does 'duplicate' -- (about 10 lines ahead of this) execute first, then everything else gets exectued 
+			// all the print statemtns in this thread get executed later - and in the wrong order too!...???!?.
+			//hmmmmmmmmmmmmmmmmmmmmmmmmmm
+			System.out.println("going into sleep....................");
+			//Thread.sleep(10000);
+		} catch (Exception e) {e.printStackTrace();}*/
 		
 	}
 }
