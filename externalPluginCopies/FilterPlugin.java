@@ -140,6 +140,11 @@ public class FilterPlugin {
 		ImagePlus result = new Erode().erode(image, 255);
 		image.setStack(result.getStack());
 	}
+	
+	public void dilate3d(ImagePlus image) {
+		ImagePlus result = new Dilate().dilate(image, 255);
+		image.setStack(result.getStack());
+	}
 }
 
 //copied and modified from org.doube.bonej.
@@ -183,6 +188,78 @@ class Erode {
 					else
 						set(x, y, z, 0);
 					
+				}
+			}
+		}
+
+		ColorModel cm = image.getStack().getColorModel();
+
+		// create output image
+		ImageStack stack = new ImageStack(w, h);
+		for (int z = 0; z < d; z++) {
+			stack.addSlice(image.getImageStack().getSliceLabel(z + 1),
+			new ByteProcessor(w, h, this.pixels_out[z], cm));
+		}
+		ImagePlus imp = new ImagePlus();
+		imp.setCalibration(image.getCalibration());
+		imp.setStack(null, stack);
+		return imp;
+	}
+
+	public int get(int x, int y, int z) {
+		x = x < 0 ? 0 : x;
+		x = x >= w ? w - 1 : x;
+		y = y < 0 ? 0 : y;
+		y = y >= h ? h - 1 : y;
+		z = z < 0 ? 0 : z;
+		z = z >= d ? d - 1 : z;
+		return (int) (this.pixels_in[z][y * w + x] & 0xff);
+	}
+
+	public void set(int x, int y, int z, int v) {
+		this.pixels_out[z][y * w + x] = (byte) v;
+		return;
+	}
+}
+
+
+//http://www.javased.com/index.php?source_dir=BoneJ/src/org/doube/bonej/Dilate.java
+class Dilate {
+
+	private int w, h, d;
+	private byte[][] pixels_in;
+	private byte[][] pixels_out;
+
+	public ImagePlus dilate(ImagePlus image, int threshold) {
+		
+		// Determine dimensions of the image
+		w = image.getWidth();
+		h = image.getHeight();
+		d = image.getStackSize();
+
+		this.pixels_in = new byte[d][];
+		this.pixels_out = new byte[d][];
+		for (int z = 0; z < d; z++) {
+			this.pixels_in[z] = (byte[]) image.getStack().getPixels(z + 1);
+			this.pixels_out[z] = new byte[w * h];
+		}
+
+		// iterate
+		for (int z = 0; z < d; z++) {
+			IJ.showProgress(z, d - 1);
+			for (int y = 0; y < h; y++) {
+				for (int x = 0; x < w; x++) {
+					if (get(x, y, z) == threshold
+							   || get(x - 1, y, z) == threshold
+							   || get(x + 1, y, z) == threshold
+							   || get(x, y - 1, z) == threshold
+							   || get(x, y + 1, z) == threshold
+							   || get(x, y, z - 1) == threshold
+							   || get(x, y, z + 1) == threshold)
+
+						set(x, y, z, threshold);
+					else
+						set(x, y, z, get(x, y, z));
 				}
 			}
 		}
