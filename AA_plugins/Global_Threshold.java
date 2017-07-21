@@ -6,9 +6,7 @@ import ij.process.*;
 import java.awt.*;
 import java.util.Arrays;
 import ij.macro.Interpreter;
-import ij.plugin.Selection;
-import ij.plugin.ImageCalculator;
-import ij.plugin.filter.Analyzer;
+import ij.plugin.*;
 import ij.measure.Measurements;
 import ij.measure.ResultsTable;
 import ij.gui.ImageWindow;
@@ -38,17 +36,28 @@ public class Global_Threshold extends SegmentationPlugin implements PlugInFilter
 		
 		for (int i = 1; i <= image.getStack().getSize(); i++) {
 			ImageProcessor nextSlice = this.image.getStack().getProcessor(i);
-			corePlugin.applyThreshold(nextSlice, 140, 205);
+			corePlugin.applyThreshold(nextSlice, 125, 205);
+			//filterPlugin.applyFilter(nextSlice, 5, FilterType.MEDIAN);
 		}
 		this.image.show();
 		
+		
 		System.out.println("Now cleaning up!");
-		try {
-			Thread.sleep(5000);
-		}
-		catch (Exception e) {}
 		
 		filterPlugin.erode3d(this.image);
+		this.image.setStack(Filters3D.filter(this.image.getStack(), Filters3D.MIN, 2, 2, 2));
+		this.image.setStack(Filters3D.filter(this.image.getStack(), Filters3D.MAX, 2, 2, 2));
+		//try {
+		//	Thread.sleep(5000);
+		//}
+		//catch (Exception e) {}
+		
+
+		/*filterPlugin.erode3d(this.image);
+		filterPlugin.erode3d(this.image);
+		System.out.println("Done eroding, now dilating.");
+		filterPlugin.dilate3d(this.image);
+		filterPlugin.dilate3d(this.image);*/
 		
 		this.image.show();
 	}

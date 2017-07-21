@@ -3,3 +3,6 @@ Scan Keys:
 A: \\Roose_group\M_Warren\Laura_data\20131114_HUTCH_499_SIA_5050_02\20131114_HUTCH_499_SIA_5050_02.vol
 A is cropped with makeOval(195, 117, 1677, 1710)
 we decided on bounds for Brightness/Contrast of Mode and (Mode-3*SD) -- here is -4 and 29 (ish)
+
+B: \\Roose_group\M_Warren\Laura_data\20131129_HUTCH_SIA_5050_03T_recon\20131128_HUTCH_499_SIA_5050_03T.vol
+No crop yet - though I did run my 21/07/2017 Global_Threshold algorithm on it, saved that output without the crop details...
