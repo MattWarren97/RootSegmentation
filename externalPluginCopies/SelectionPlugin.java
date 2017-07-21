@@ -416,4 +416,8 @@ public class SelectionPlugin {
             return new OvalRoi(bounds.x, bounds.y, bounds.width, bounds.height);
     }
 	
+	public void applyRoi(ImagePlus iPlus, Roi roi) {
+		iPlus.setRoi(roi);
+	}
+	
 }

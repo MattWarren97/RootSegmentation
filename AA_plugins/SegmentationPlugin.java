@@ -29,9 +29,11 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 	public int sliceNumber;
 	SelectionPlugin selectionPlugin;
 	FilterPlugin filterPlugin;
+	CorePlugin corePlugin;
 	
 	public SegmentationPlugin() {
 		System.err.println("Initialising log");
+		corePlugin = new CorePlugin();
 		selectionPlugin = new SelectionPlugin();
 		filterPlugin = new FilterPlugin();
 	}

@@ -147,6 +147,7 @@ public class Conversion_ implements PlugInFilter  {
 		double max = stats.dmode;
 		this.image.setDisplayRange(min, max);
 		this.image.show();
+		new Global_Threshold(this.image);
 		
 	}
 	

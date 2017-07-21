@@ -52,7 +52,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, sliceNumber);
-			applyThreshold(ip, 0, 15);
+			corePlugin.applyThreshold(ip, 0, 15);
 		}
 		image = new ImagePlus("distance transformed", byteStack);
 		
@@ -72,12 +72,12 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, sliceNumber);
-			applyThreshold(ip, 1, 255); //original image returns binary pixel values.
+			corePlugin.applyThreshold(ip, 1, 255); //original image returns binary pixel values.
 		}
 		image = new ImagePlus("Final 8-bit display", byteStack);
 		image.show();
 		
-		//applyThreshold(ip, 0, 11);
+		//corePlugin.applyThreshold(ip, 0, 11);
 		
 	}
 		
@@ -87,9 +87,9 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		ipCopy = (ImageProcessor) ip.clone();
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
-		runGaussianMask(ip);
+		runGaussianMask(ip, gauss_mean, gauss_std);
 		filterPlugin.applyFilter(ip, MED_RD, FilterType.MEDIAN);
-		applyThreshold(ip, 75, 255);
+		corePlugin.applyThreshold(ip, 75, 255);
 		filterPlugin.applyFilter(ip, 2, FilterType.MIN);
 
 		ImagePlus iPlus = new ImagePlus("ip" + sliceNumber, ip);
@@ -99,7 +99,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 
 		Roi selectionRoi = selectionPlugin.selectFromMask(iPlus);
 		
-		applyRoi(iPlusCopy, selectionRoi);
+		selectionPlugin.applyRoi(iPlusCopy, selectionRoi);
 
 
 		
@@ -125,54 +125,6 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		
 	}
 	
-	private void applyRoi(ImagePlus iPlus, Roi roi) {
-		iPlus.setRoi(roi);
-	}
-	
-	private void runGaussianMask(ImageProcessor ip) {
-		//It would be quicker to find the gaussianValue for each pixel, then decide whether it meets the threshold criteria and create the mask pixel by pixel.
-		//but I'm not quite sure how to do that, so will do it here in two steps (threshold, mask) that both need to create their own image.
-		
-
-		byte[] pixels = (byte[]) ip.getPixels();
-		
-		int width = ip.getWidth();
-		int height = ip.getHeight();
-		Rectangle r = new Rectangle(0,0,width,height);
-		//System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
-
-		int offset, i;
-		for (int y = r.y; y < (r.y+r.height); y++) {
-			offset = y*width;
-			for (int x = r.x; x < (r.x+r.width); x++) {
-				i = offset+x;
-				double newValue = Math.floor((Math.exp(-((Math.pow(pixels[i]-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
-				int newInt = (int) newValue;
-				byte newByte = (byte) newInt;
-				pixels[i] = newByte;
-			}
-		}
-		
-
-		
-	}
-	
-	private void applyThreshold(ImageProcessor ip, int lowLimit, int highLimit) {
-		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
-		int[] lut = new int[256];
-		int whiteColor = 255;
-		int blackColor = 0;
-		for (int i = 0; i < 256; i++) {
-			if (i>=lowLimit  && i <= highLimit) {
-				lut[i] = whiteColor;
-			}
-			else {
-				lut[i] = blackColor;
-			}
-		}
-		ip.applyTable(lut);
-		ip.setBinaryThreshold();
-	}
 	
 		
 	public void showAbout() {
