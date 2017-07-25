@@ -27,15 +27,55 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
+	Roi outerRoi;
 
 	public Global_Iterative() {
 		super();
-		gauss_mean = 112;
+		
 		//gauss_mean=84;
-		gauss_std = 4.5;
+		//gauss_std = 4.5;
+		//Image B... I think.
+		//gauss_mean = 126;
+		//gauss_std = 18;
+		gauss_mean = 73.5;
+		gauss_std = 10;
+	}
+	
+	public Global_Iterative(ImagePlus image, Roi initialRoi, Roi outerRoi) {
+		super();
+		this.outerRoi = outerRoi;
+		this.setup("", image);
+		gauss_std = 20;
+		System.out.println("before findnewmean");
+		findNewMean(new ImagePlus("ip", image.getStack().getProcessor(1)), initialRoi);
+		System.out.println("after findnewmean");
+		run(this.image.getProcessor());
+	}
+	
+	public void findNewMean(ImagePlus original, Roi roi) {
+		
+		selectionPlugin.applyRoi(original, roi, outerRoi);
+		
+		int measurements = Measurements.MEAN; //+ Measurements.STD_DEV;
+		
+		ResultsTable rt = new ResultsTable();
+		Analyzer an = new Analyzer(original, measurements, rt);
+		
+		an.measure();
+		double newMean = rt.getValue("Mean", rt.getCounter()-1);
+		//double newStd = rt.getValue("StdDev", rt.getCounter()-1);
+		
+		gauss_mean = newMean;
+		//gauss_std = newStd;
+		System.out.println("Image: " + sliceNumber + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
+		
+		
+		original.deleteRoi();
 	}
 	
 	public void run(ImageProcessor ip) {
+		System.out.println("Beginning Global Iterative process");
+		
 		ImageStack stack = image.getStack();
 		int stackSize = stack.getSize();
 		for (sliceNumber = 1; sliceNumber <= stackSize; sliceNumber++) {
@@ -44,17 +84,21 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 			nextSlice.invert();
 		}
 		
+		stack = image.getStack();
+		System.out.println("after calculate for each slice");
+		(new ImagePlus("after calculate for each slice", stack)).show();
 		EDT edt = new EDT();
 		image = edt.performTransform(image); //returns a new object - a float image.
 		stack = image.getStack();
 		ImageStack byteStack = new ImageStack(X, Y, Z);
-		for (int sliceNumber = 1; sliceNumber<= stackSize; sliceNumber++) {
+		for (sliceNumber = 1; sliceNumber<= stackSize; sliceNumber++) {
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, sliceNumber);
 			corePlugin.applyThreshold(ip, 0, 15);
 		}
 		image = new ImagePlus("distance transformed", byteStack);
+		(new ImagePlus("After calculating Distance transform", byteStack)).show();
 		
 		Roi centralRoi = selectionPlugin.selectCentralObject(image);
 		Point contained = centralRoi.getContainedPoints()[0];
@@ -68,7 +112,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		
 		stack = image.getStack(); //all images are 16 bits.
 		byteStack = new ImageStack(X, Y, Z);
-		for (int sliceNumber = 1; sliceNumber <= stackSize; sliceNumber++) {
+		for (sliceNumber = 1; sliceNumber <= stackSize; sliceNumber++) {
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, sliceNumber);
@@ -87,7 +131,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		ipCopy = (ImageProcessor) ip.clone();
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
-		runGaussianMask(ip, gauss_mean, gauss_std);
+		corePlugin.runGaussianMask(ip, gauss_mean, gauss_std);
 		filterPlugin.applyFilter(ip, MED_RD, FilterType.MEDIAN);
 		corePlugin.applyThreshold(ip, 75, 255);
 		filterPlugin.applyFilter(ip, 2, FilterType.MIN);
@@ -99,29 +143,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 
 		Roi selectionRoi = selectionPlugin.selectFromMask(iPlus);
 		
-		selectionPlugin.applyRoi(iPlusCopy, selectionRoi);
-
-
-		
-		int measurements = Measurements.MEAN + Measurements.STD_DEV;
-		
-		ResultsTable rt = new ResultsTable();
-		Analyzer an = new Analyzer(iPlusCopy, measurements, rt);
-		
-		an.measure();
-		double newMean = rt.getValue("Mean", rt.getCounter()-1);
-		double newStd = rt.getValue("StdDev", rt.getCounter()-1);
-		
-		gauss_mean = newMean;
-		gauss_std = newStd;
-		//if (gauss_std > 4.5) {
-			gauss_std = 4.5;
-		//}
-		System.out.println("Image: " + sliceNumber + ", Mean: " + gauss_mean + ", Std_dev: " + gauss_std);
-		
-		
-		iPlusCopy.deleteRoi();
-		iPlus.deleteRoi();
+		findNewMean(iPlusCopy, selectionRoi);
 		
 	}
 	

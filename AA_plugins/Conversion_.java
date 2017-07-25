@@ -28,6 +28,7 @@ public class Conversion_ implements PlugInFilter  {
 	Integer topSliceNumber;
 	Integer bottomSliceNumber;
 	public static String success = "Success!";
+	Roi outerRoi;
 	
 	
 	public Conversion_() {
@@ -45,12 +46,9 @@ public class Conversion_ implements PlugInFilter  {
 	public void run(ImageProcessor ip) {
 		System.out.println(ip.getBitDepth());
 		new SelectTopBottom(this);
-
 		
 	}
-	
 
-	
 	public void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
 	}
@@ -119,11 +117,13 @@ public class Conversion_ implements PlugInFilter  {
 	public void completedCircleSelection(Roi topEllipse, Roi bottomEllipse, boolean reverse) {
 		System.out.println("a");
 		this.image.setRoi(topEllipse);
+		this.outerRoi = topEllipse;
+		
 		int a = 2;
 		System.out.println("DUPLICATING INTO RAM BEGIN: This will take a while, no loading bar yet..." + a);
 		System.out.println("This is probably printed after duplicating!?????!!? It was called before......");
 		a = 5;
-		image = this.image.duplicate();
+		image = this.image.duplicate(); //load stack into ram, rather than virtual stack.
 		
 		if (reverse) {
 			reverseStack();
@@ -132,6 +132,7 @@ public class Conversion_ implements PlugInFilter  {
 		topEllipse.setLocation(0, 0);
 		
 		image.setRoi(topEllipse);
+		
 		adjustBrightnessContrast();
 	}
 	
@@ -147,7 +148,11 @@ public class Conversion_ implements PlugInFilter  {
 		double max = stats.dmode;
 		this.image.setDisplayRange(min, max);
 		this.image.show();
-		new Global_Threshold(this.image);
+		System.out.println("finished duplicating - now converting to 8 bit ");
+		ImageConverter ic = new ImageConverter(this.image);
+		ic.convertToGray8();
+		new SelectFirstRoot(this);
+		//new Global_Threshold(this.image);
 		
 	}
 	
@@ -168,6 +173,10 @@ public class Conversion_ implements PlugInFilter  {
 			((CompositeImage)this.image).reset();
 			this.image.updateAndDraw();
 		}*/
+	}
+	
+	public void runGlobalIterative(Roi firstSliceRoi) {
+		new Global_Iterative(this.image, firstSliceRoi, outerRoi);
 	}
 }
 
@@ -294,6 +303,7 @@ class SelectCircles extends BasicFrame {
 		go = new JButton("Use this selection");
 		go.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				SelectCircles.this.dispatchEvent(new WindowEvent(SelectCircles.this, WindowEvent.WINDOW_CLOSING));
 				SelectCircles.this.plugin.completedCircleSelection(SelectCircles.this.topEllipse, SelectCircles.this.bottomEllipse, SelectCircles.this.reverseStack.isSelected());
 			}
 		});
@@ -323,38 +333,44 @@ class SelectCircles extends BasicFrame {
 		displayedSlice = new ImagePlus("Last image - please select roi", ip_last);
 		displayedSlice.setRoi(topEllipse);
 		displayedSlice.show();
-		
-		/*System.out.println("switch stmnt reached");
-		switch (JOptionPane.showConfirmDialog(null, "Currently the top ellipse is overlayed - is this roi ok?")) {
-			case JOptionPane.YES_OPTION:
-				System.out.println("Same ellipse is ok!");
-				bottomEllipse = topEllipse;
-				break;
-			case JOptionPane.NO_OPTION:
-				System.err.println("Selecting a different ellipse is not implemented yet.");
-				bottomEllipse = topEllipse;
-				break;
-			case JOptionPane.CANCEL_OPTION:
-				System.err.println("Cancel was pressed. The same ellipse option will be used.");
-				bottomEllipse = topEllipse;
-				break;
-			default:
-				System.err.println("in getLastEllipse neither JOptionPaneOption was selected.");
-				break;
-		}
-		System.out.println("Switch stmnt ended");
-		displayedSlice.changes = false;
-		displayedSlice.close();
-		System.out.println("Completed circle selection!");
-		this.plugin.completedCircleSelection(this.topEllipse, this.bottomEllipse);
-		try {
-			//this is so weird. Why does 'duplicate' -- (about 10 lines ahead of this) execute first, then everything else gets exectued 
-			// all the print statemtns in this thread get executed later - and in the wrong order too!...???!?.
-			//hmmmmmmmmmmmmmmmmmmmmmmmmmm
-			System.out.println("going into sleep....................");
-			//Thread.sleep(10000);
-		} catch (Exception e) {e.printStackTrace();}*/
-		
 	}
 }
+
+class SelectFirstRoot extends BasicFrame {
+	
+	JButton rootsSelected;
+	ImageStack stack;
+	ImagePlus displayedSlice;
+	Roi firstSliceRoi;
+	
+	public SelectFirstRoot(Conversion_ plugin) {
+		super(plugin);
+		System.out.println("SelectFirstRoot begun");
+		
+		stack = this.plugin.image.getStack();
+		
+		ImageProcessor ip_one = stack.getProcessor(1);
+		displayedSlice = new ImagePlus("First Image - please select the root area on this first slice", ip_one);
+		displayedSlice.show();
+		rootsSelected = new JButton("Press when roots on first slice are selected in region");
+		rootsSelected.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SelectFirstRoot.this.firstSliceRoi = displayedSlice.getRoi();
+					if (SelectFirstRoot.this.firstSliceRoi == null) {
+						JOptionPane.showMessageDialog(null, "Please select an roi, then click 'Selected top ellipse'");
+					}
+					else {
+						SelectFirstRoot.this.runGlobalIterative(firstSliceRoi);
+					}
+			}
+		});
+		this.add(rootsSelected);
+		this.setVisible(true);
+	}
+	
+	public void runGlobalIterative(Roi firstSliceRoi) {
+		this.plugin.runGlobalIterative(firstSliceRoi);
+	}
+}
+		
 

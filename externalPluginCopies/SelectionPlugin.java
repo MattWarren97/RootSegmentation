@@ -11,11 +11,9 @@ import ij.plugin.ImageCalculator;
 import ij.plugin.filter.Analyzer;
 import ij.measure.Measurements;
 import ij.measure.ResultsTable;
-import ij.gui.ImageWindow;
 import ij.plugin.filter.ThresholdToSelection;
-import ij.gui.Roi;
 import ij.plugin.filter.EDM;
-import ij.gui.OvalRoi;
+import ij.gui.*;
 import ij.measure.Calibration;
 
 //contains a single method -- to select the central object from a mask.
@@ -416,8 +414,26 @@ public class SelectionPlugin {
             return new OvalRoi(bounds.x, bounds.y, bounds.width, bounds.height);
     }
 	
-	public void applyRoi(ImagePlus iPlus, Roi roi) {
-		iPlus.setRoi(roi);
+	public void applyRoi(ImagePlus iPlus, Roi roi, Roi outerRoi) {
+		if (outerRoi == null) {
+			iPlus.setRoi(roi);
+		}
+		else {
+			Roi andedRoi = andRoi(roi, outerRoi);
+			iPlus.setRoi(andedRoi);
+		}
+			
+	}
+	
+	//method 'and()' from https://imagej.nih.gov/ij/developer/source/ij/plugin/frame/RoiManager.java.html
+	public ShapeRoi andRoi(Roi a, Roi b) {
+		ShapeRoi s1 = new ShapeRoi(a);
+		ShapeRoi s2 = new ShapeRoi(b);
+		if (s1 == null || s2 == null) {
+			System.err.println("andRoi failed, one of the rois is null");
+		}
+		s1.and(s2);
+		return s1;
 	}
 	
 }

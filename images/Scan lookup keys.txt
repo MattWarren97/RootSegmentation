@@ -4,5 +4,13 @@ A: \\Roose_group\M_Warren\Laura_data\20131114_HUTCH_499_SIA_5050_02\20131114_HUT
 A is cropped with makeOval(195, 117, 1677, 1710)
 we decided on bounds for Brightness/Contrast of Mode and (Mode-3*SD) -- here is -4 and 29 (ish)
 
+ATest -- same as A, cropped 1489-1699
+
+
 B: \\Roose_group\M_Warren\Laura_data\20131129_HUTCH_SIA_5050_03T_recon\20131128_HUTCH_499_SIA_5050_03T.vol
-No crop yet - though I did run my 21/07/2017 Global_Threshold algorithm on it, saved that output without the crop details...
+//First: No crop yet - though I did run my 21/07/2017 Global_Threshold algorithm on it, saved that output without the Scrop details...
+//Second: Mode of 29.586, S.D of 11.499, so bounds are 29.586 and -4.911
+//Second: Once brightness/contrast has been adjusted - roots on top slice can be nearly all selected with 98-154 threshold.
+//Second: Slice 191-1826 for crop, x=120-1860, y=173-1899 for selection
+
+
