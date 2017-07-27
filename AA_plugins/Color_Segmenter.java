@@ -30,7 +30,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static float colourDifferenceWeight = 1;
 	static float areaDifferenceWeight = 1;
 	static float aspectRatioDifferenceWeight = 1;
-	static float maxCenterDistance = 20;
+	static float maxCenterDistance = 5;
 
 	static {
 		lut = new int[256];
@@ -45,6 +45,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	ArrayList<Point> sameClusterToBeProcessed;
 	HashMap<Integer, ArrayList<Cluster>> sliceClusterMap;
 	HashMap<Integer, Integer> differenceCounts;
+	HashMap<Cluster, Cluster> connectedClusters;
 
 	Point[][] points;
 
@@ -59,14 +60,20 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			connectivityAnalysis(nextSlice);
 			sliceClusterMap.put(i, largeClusters);
 		}
-		ImagePlus image = new ImagePlus("4bitimage", stack);
-		image.show();
+		//ImagePlus image = new ImagePlus("4bitimage", stack);
+		//image.show();
 		System.out.println("Finished calculating clusters for each image. Now trying to link them.");
 
+		printDifferenceCounts();
+
+	}
+
+	public void printDifferenceCounts() {
 		differenceCounts = new HashMap<Integer, Integer>();
+		connectedClusters = new HashMap<Cluster, Cluster>();
 		int nullCount = 0;
 		int nonNullCount = 0;
-		for (int i = 1; i <= stack.getSize() - 1; i++) {
+		for (int i = 1; i <= this.image.getStackSize() - 1; i++) {
 			ArrayList<Cluster> iClusters = sliceClusterMap.get(i);
 			ArrayList<Cluster> ippClusters = sliceClusterMap.get(i+1);
 			for (Cluster c1: iClusters) {
@@ -98,6 +105,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 
 		System.out.println("Finally! " + differenceCounts);
+		System.out.println("NullCount: " + nullCount + ", nonNullCount: " + nonNullCount);
 
 	}
 
@@ -221,7 +229,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 
 		float colourDifference = (float) Math.abs(c1.colour - c2.colour);
 		float aspectRatioChange = (float) Math.abs((c1.aspectRatio - c2.aspectRatio)/(c1.aspectRatio + c2.aspectRatio));
-		float areaDifference = (float) Math.abs((c1.area - c2.area)/c1.area);
+		//changed areaDiference -- now divides by c1+c2 -- because otherwise it seems inconsitent TODO.
+
+		float areaDifference = (float) Math.abs((c1.area - c2.area)/(c1.area + c2.area));
 
 		float comparison = colourDifference*colourDifferenceWeight + aspectRatioChange*aspectRatioDifferenceWeight + areaDifference*areaDifferenceWeight;
 		return comparison;
