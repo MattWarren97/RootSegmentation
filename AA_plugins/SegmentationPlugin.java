@@ -54,7 +54,9 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 	
 	public abstract void run(ImageProcessor ip);
 	
-	public abstract void showAbout();
+	public void showAbout() {
+
+	}
 	
 	
 }
