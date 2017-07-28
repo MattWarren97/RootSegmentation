@@ -52,6 +52,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	public void run(ImageProcessor ip) {
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>();
 
+		//could easily make this multithreaded I think... (TODO)
 		ImageStack stack = this.image.getStack();
 		for (int i = 1; i <= stack.getSize(); i++) {
 			System.out.println("Run on Slice: " + i);
@@ -69,14 +70,18 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	}
 
 	public void printDifferenceCounts() {
+		//{0=259633, 1=169307, 2=20573, 3=3660, 4=1021, 5=362, 6=101, 7=34, 8=14, 9=10, 10=1, 14=1} [more than 1 each]
+
 		differenceCounts = new HashMap<Integer, Integer>();
 		connectedClusters = new HashMap<Cluster, Cluster>();
 		int nullCount = 0;
 		int nonNullCount = 0;
+		int duplicateFirstClusterCount = 0;
 		for (int i = 1; i <= this.image.getStackSize() - 1; i++) {
 			ArrayList<Cluster> iClusters = sliceClusterMap.get(i);
 			ArrayList<Cluster> ippClusters = sliceClusterMap.get(i+1);
 			for (Cluster c1: iClusters) {
+				float minDifference = -1;
 				for (Cluster c2 : ippClusters) {
 					if (c1 == null) {
 						System.out.println("c1 is null!");
@@ -93,11 +98,19 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					nonNullCount++;
 					//automatically round down.
 					Integer floorDifference = (int) ((float) difference);
-					if (differenceCounts.keySet().contains(floorDifference)) {
-						differenceCounts.put(floorDifference, differenceCounts.get(floorDifference) + 1);
+					
+					if (difference < minDifference || minDifference == -1) {
+						
+						if (differenceCounts.keySet().contains(floorDifference)) {
+							differenceCounts.put(floorDifference, differenceCounts.get(floorDifference) + 1);
+						}
+						else {
+							differenceCounts.put(floorDifference, 1);
+						}
+						minDifference = difference;
 					}
 					else {
-						differenceCounts.put(floorDifference, 1);
+						duplicateFirstClusterCount++;
 					}
 				}
 			}
@@ -105,7 +118,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 
 		System.out.println("Finally! " + differenceCounts);
-		System.out.println("NullCount: " + nullCount + ", nonNullCount: " + nonNullCount);
+		System.out.println("NullCount: " + nullCount + ", nonNullCount: " + nonNullCount + ", duplicateFirstClusterCount: " + duplicateFirstClusterCount);
 
 	}
 
@@ -187,7 +200,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 		System.out.println("Points: " + points.length*(points[0].length));
 		System.out.println("Clusters: " + clusters.size());
-		System.out.println("20-size clusters: " + largeClusters.size());
+		System.out.println(Color_Segmenter.minClusterSize + "-size clusters: " + largeClusters.size());
 		clusters = null;
 		points = null;
 	}
