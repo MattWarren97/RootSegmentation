@@ -31,25 +31,22 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static float areaDifferenceWeight = 1;
 	static float aspectRatioDifferenceWeight = 1;
 	static float maxCenterDistance = 5;
-
+	
 	static {
 		lut = new int[256];
 		for (int i = 0; i< 256; i++) {
 			lut[i] = i/16;
 		}
 	}
+	
 
-	ArrayList<Cluster> clusters;
-	ArrayList<Cluster> largeClusters;
-	ArrayList<Point> toBeProcessed;
-	ArrayList<Point> sameClusterToBeProcessed;
 	HashMap<Integer, ArrayList<Cluster>> sliceClusterMap;
 	HashMap<Integer, Integer> differenceCounts;
 	HashMap<Cluster, Cluster> connectedClusters;
 
-	Point[][] points;
 
-	public void run(ImageProcessor ip) {
+
+	/*public void run(ImageProcessor ip) {
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>();
 
 		//could easily make this multithreaded I think... (TODO)
@@ -67,10 +64,48 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 
 		printDifferenceCounts();
 
+	}*/
+	
+	//multithreaded run version
+	public void run(ImageProcessor ip) {
+		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //does this need to be synchronised?
+		ImageStack stack = this.image.getStack(); //this too..?
+		int processors = Runtime.getRuntime().availableProcessors();
+		float slicesPerThread = (float) stack.getSize() / (float) processors;
+		float runningSlicesComputedWithRemainder = 0; //to ensure that you don't have 10,10,10,19 slices for each thread - will be even now.
+		System.out.println(processors + " processors.");
+		int startSlice = 1;
+		Thread[] threads = new Thread[processors];
+		for (int i = 0; i < processors; i++) {
+			runningSlicesComputedWithRemainder += slicesPerThread;
+			int end = (int) runningSlicesComputedWithRemainder;
+			Thread t = new Thread(new ObjectFinder(startSlice, end, stack, this));
+			t.start();
+			threads[i] = t;
+			startSlice = end + 1;
+		}
+		
+		for (int i = 0; i < processors; i++) {
+			try {
+				threads[i].join();
+			}
+			catch (InterruptedException ie) {
+				System.out.println("Thread " + i + " has joined!");
+			}
+		}
+		
+		
+		//wait for the other threads to be finished...
+		System.out.println("Finished calculatign clusters for each image. Now trying to link them!");
+		printDifferenceCounts();
 	}
+			
+	
+
 
 	public void printDifferenceCounts() {
 		//{0=259633, 1=169307, 2=20573, 3=3660, 4=1021, 5=362, 6=101, 7=34, 8=14, 9=10, 10=1, 14=1} [more than 1 each]
+		//{0=257548, 1=131425, 2=15536, 3=2866, 4=824, 5=297, 6=86, 7=32, 8=8, 9=8, 10=1, 14=1} [only 1 each].
 
 		differenceCounts = new HashMap<Integer, Integer>();
 		connectedClusters = new HashMap<Cluster, Cluster>();
@@ -122,6 +157,57 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 
 	}
 
+
+	public Float compareClusters(Cluster c1, Cluster c2) {
+		float centerXDist = Math.abs(c1.center[0] - c2.center[0]);
+		float centerYDist = Math.abs(c1.center[1] - c2.center[1]);
+
+		float centerDifference = (float) Math.sqrt(Math.pow(centerXDist, 2) + Math.pow(centerYDist, 2));
+
+		if (centerDifference > Color_Segmenter.maxCenterDistance) {
+			return null;
+		}
+
+		float colourDifference = (float) Math.abs(c1.colour - c2.colour);
+		float aspectRatioChange = (float) Math.abs((c1.aspectRatio - c2.aspectRatio)/(c1.aspectRatio + c2.aspectRatio));
+		//changed areaDiference -- now divides by c1+c2 -- because otherwise it seems inconsitent TODO.
+
+		float areaDifference = (float) Math.abs((c1.area - c2.area)/(c1.area + c2.area));
+
+		float comparison = colourDifference*colourDifferenceWeight + aspectRatioChange*aspectRatioDifferenceWeight + areaDifference*areaDifferenceWeight;
+		return comparison;
+	}
+
+}
+
+class ObjectFinder implements Runnable {
+	int start, end;
+	ImageStack stack;
+	Color_Segmenter cs;
+	
+	ArrayList<Cluster> clusters;
+	ArrayList<Cluster> largeClusters;
+	ArrayList<Point> toBeProcessed;
+	ArrayList<Point> sameClusterToBeProcessed;
+	Point[][] points;
+		
+	public ObjectFinder(int start, int end, ImageStack stack, Color_Segmenter cs) {
+		this.start = start;
+		this.end = end;
+		this.stack = stack;
+		this.cs = cs;
+	}
+	public void run() {
+		System.out.println("Thread between " + start + "-" + end + " has begun.");
+		for (int i = start; i <= end; i++) {
+			System.out.println("Run on Slice: " + i);
+			ImageProcessor nextSlice = stack.getProcessor(i);
+			convertTo4Bit(nextSlice);
+			connectivityAnalysis(nextSlice);
+			cs.sliceClusterMap.put(i, largeClusters);
+		}
+	}
+	
 	public void convertTo4Bit(ImageProcessor ip) {
 		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
 		ip.applyTable(Color_Segmenter.lut);
@@ -132,8 +218,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	public void connectivityAnalysis(ImageProcessor ip) {
 		int xMin = 0;
 		int yMin = 0;
-		int xMax = X-1;
-		int yMax = Y-1;
+		int xMax = this.cs.X-1;
+		int yMax = this.cs.Y-1;
 		clusters = new ArrayList<Cluster>();
 		largeClusters = new ArrayList<Cluster>();
 		toBeProcessed = new ArrayList<Point>();
@@ -194,7 +280,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 
 		for (Cluster c: clusters) {
-			if (c.getArea() >= minClusterSize) {
+			if (c.getArea() >= Color_Segmenter.minClusterSize) {
 				largeClusters.add(c);
 			}
 		}
@@ -228,28 +314,6 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			}
 		}
 	}
-
-
-	public Float compareClusters(Cluster c1, Cluster c2) {
-		float centerXDist = Math.abs(c1.center[0] - c2.center[0]);
-		float centerYDist = Math.abs(c1.center[1] - c2.center[1]);
-
-		float centerDifference = (float) Math.sqrt(Math.pow(centerXDist, 2) + Math.pow(centerYDist, 2));
-
-		if (centerDifference > Color_Segmenter.maxCenterDistance) {
-			return null;
-		}
-
-		float colourDifference = (float) Math.abs(c1.colour - c2.colour);
-		float aspectRatioChange = (float) Math.abs((c1.aspectRatio - c2.aspectRatio)/(c1.aspectRatio + c2.aspectRatio));
-		//changed areaDiference -- now divides by c1+c2 -- because otherwise it seems inconsitent TODO.
-
-		float areaDifference = (float) Math.abs((c1.area - c2.area)/(c1.area + c2.area));
-
-		float comparison = colourDifference*colourDifferenceWeight + aspectRatioChange*aspectRatioDifferenceWeight + areaDifference*areaDifferenceWeight;
-		return comparison;
-	}
-
 }
 
 class Point {
