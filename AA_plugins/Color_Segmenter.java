@@ -32,7 +32,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static float areaDifferenceWeight = 1;
 	static float aspectRatioDifferenceWeight = 1;
 	static float maxCenterDistance = 5;
-	static int minClusterChainLength = 10;
+	static int minClusterChainLength = 15;
 	
 	static {
 		lut = new int[256];
@@ -182,7 +182,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				else {
 					clusterLengths.put(length, 1);
 				}
-				if (length > 15) {
+				if (length > minClusterChainLength) {
 					System.out.println(firstKey + " has a length of at least " + length);
 					ArrayList<Cluster> toBeDisplayed = new ArrayList<Cluster>();
 					key = firstKey;
