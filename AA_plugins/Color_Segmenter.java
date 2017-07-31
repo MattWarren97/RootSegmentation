@@ -21,8 +21,7 @@ import externalPluginCopies.FilterPlugin.FilterType;
 import java.util.*;
 
 public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter {
-	//start at 4-5-6 up to 11-12-13
-	//compare the 4-5-6 slice 0 clustering with the 4-5-6 and 5-6-7 (and would be 3-4-5 but too low) on slice 1 but not 6-7-8 -- too big a jump
+	
 
 
 	static int[] lut;
@@ -240,6 +239,19 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 }
 
 class ObjectFinder implements Runnable {
+	
+	
+	//TODO
+	//problems:
+	//- newPoint.hasCluster is no longer sufficient to rule out processing a point.
+	// 	because points can now be used in multiple clusters, and processing a point is necessary to access its neighbours.
+	//- need to be able to add points to sameClusterToBeProcessed without (always) changing that point's cluster. 
+	//	[fixed!] -- made a change to cluster.addPoint, still TODO: apply it.
+	//- need to store clusters by their central value so that I can discriminate in comparing a 4-5-6 with  only 5-6-7, not any 7-8-9.
+	//- Could implement some level of chain-linkingAnalysis to the ObjectFinder (still in parallelised) --
+	//	then use those results later on to combine across the arbitrary divisions [would speed it up].
+	
+	
 	int start, end;
 	ImageStack stack;
 	Color_Segmenter cs;
@@ -275,65 +287,78 @@ class ObjectFinder implements Runnable {
 	}
 
 
-
 	public void connectivityAnalysis(ImageProcessor ip) {
 		int xMin = 0;
 		int yMin = 0;
 		int xMax = this.cs.X-1;
 		int yMax = this.cs.Y-1;
-		clusters = new ArrayList<Cluster>();
-		largeClusters = new ArrayList<Cluster>();
-		toBeProcessed = new ArrayList<Point>();
-		sameClusterToBeProcessed = new ArrayList<Point>();
+		
+		
+		//start at 4-5-6 up to 11-12-13
+		//compare the 5-6-7 slice 0 clustering with the clusters for:
+		//4-5-6, 5-6-7 and 6-7-8 on slice 1 -- but not 7-8-9 or 3-4-5 (maximum jump of 1 & also 3-4-5 is too low I think)
+		HashMap<Integer, ArrayList<Cluster>> centralValue_to_clusters = new HashMap<Integer, ArrayList<Cluster>>();
+		ArrayList<Cluster> clusters;
+		int minRootValue = 4;
+		int maxRootValue = 13;
+		for (int i = 0; i < maxStart - minStart; i++) {
+		
+			clusters = new ArrayList<Cluster>();
+			largeClusters = new ArrayList<Cluster>();
+			toBeProcessed = new ArrayList<Point>();
+			sameClusterToBeProcessed = new ArrayList<Point>();
 
-		points = new Point[xMax+1][yMax+1];
-		for (int i = 0; i < xMax+1; i++) {
-			for (int j = 0; j < yMax+1; j++) {
-				points[i][j] = new Point(i, j, ip.get(i, j));
-			}
-		}
-
-		toBeProcessed.add(points[0][0]);
-
-		while(toBeProcessed.size() != 0 || sameClusterToBeProcessed.size() != 0) {
-			boolean sameCluster = false;
-			Point currentPoint;
-			if (sameClusterToBeProcessed.size() != 0) {
-				currentPoint = sameClusterToBeProcessed.get(0);
-				sameCluster = true;
-			}
-			else {
-				currentPoint = toBeProcessed.get(0);
-				this.clusters.add(new Cluster(currentPoint, sliceNumber));
-			}
-			//System.out.println("New point is " + currentPoint);
-			//System.out.println("Length of toBeProcessed, sameClusterToBeProcessed is " + toBeProcessed.size() + "," + sameClusterToBeProcessed.size());
-
-			//first try to the right of this point --
-			if(currentPoint.x + 1 <= xMax) {
-				considerPoint(currentPoint.x+1, currentPoint.y, currentPoint);
-			}
-			//next try the point to the left of this point --
-			if (currentPoint.x - 1  >= xMin) {
-				considerPoint(currentPoint.x-1, currentPoint.y, currentPoint);
-			}
-			//next try below this point --
-			if (currentPoint.y + 1 <= yMax) {
-				considerPoint(currentPoint.x, currentPoint.y+1, currentPoint);
-			}
-			//finally try above this point --
-			if (currentPoint.y - 1 >= yMin) {
-				considerPoint(currentPoint.x, currentPoint.y-1, currentPoint);
+			points = new Point[xMax+1][yMax+1];
+			for (int i = 0; i < xMax+1; i++) {
+				for (int j = 0; j < yMax+1; j++) {
+					points[i][j] = new Point(i, j, ip.get(i, j));
+				}
 			}
 
-			//then remove that last point from its list.
-			if (sameCluster) {
-				sameClusterToBeProcessed.remove(0);
+			toBeProcessed.add(points[0][0]);
+
+			int currentClusterValue;
+			
+			while(toBeProcessed.size() != 0 || sameClusterToBeProcessed.size() != 0) {
+				boolean sameCluster = false;
+				Point currentPoint;
+				if (sameClusterToBeProcessed.size() != 0) {
+					currentPoint = sameClusterToBeProcessed.get(0);
+					sameCluster = true;
+				}
+				else {
+					currentPoint = toBeProcessed.get(0);
+					this.clusters.add(new Cluster(currentPoint, sliceNumber));
+					currentClusterValue = currentPoint.value;
+				}
+				//System.out.println("New point is " + currentPoint);
+				//System.out.println("Length of toBeProcessed, sameClusterToBeProcessed is " + toBeProcessed.size() + "," + sameClusterToBeProcessed.size());
+
+				//first try to the right of this point --
+				if(currentPoint.x + 1 <= xMax) {
+					considerPoint(currentPoint.x+1, currentPoint.y, currentPoint);
+				}
+				//next try the point to the left of this point --
+				if (currentPoint.x - 1  >= xMin) {
+					considerPoint(currentPoint.x-1, currentPoint.y, currentPoint);
+				}
+				//next try below this point --
+				if (currentPoint.y + 1 <= yMax) {
+					considerPoint(currentPoint.x, currentPoint.y+1, currentPoint);
+				}
+				//finally try above this point --
+				if (currentPoint.y - 1 >= yMin) {
+					considerPoint(currentPoint.x, currentPoint.y-1, currentPoint);
+				}
+
+				//then remove that last point from its list.
+				if (sameCluster) {
+					sameClusterToBeProcessed.remove(0);
+				}
+				else {
+					toBeProcessed.remove(0);
+				}
 			}
-			else {
-				toBeProcessed.remove(0);
-			}
-		}
 
 		//now going through and sorting out 'future neighbours' for each cluster.
 		for (Cluster c: clusters) {
@@ -351,7 +376,7 @@ class ObjectFinder implements Runnable {
 		clusters = null;
 		points = null;
 	}
-
+	
 	public void considerPoint(int x, int y, Point previous) {
 		//System.out.println("Considering " + x + ", " + y);
 		Point newPoint = points[x][y];
@@ -359,8 +384,13 @@ class ObjectFinder implements Runnable {
 			//System.out.println("Ignoring " + newPoint + " - it has a cluster!");
 			return;
 		}
-		if (newPoint.value == previous.value) {
+		if (newPoint.value == previous.value || newPoint.value == previous.value - 1 || newPoint.value == previous.value+1) {
 			previous.cluster.addPoint(newPoint);
+			if (newPoint.value == previous.value) {
+				sameClusterToBeProcessed.add(newPoint);
+			}
+			else {
+				
 			if (!sameClusterToBeProcessed.contains(newPoint)) {
 				sameClusterToBeProcessed.add(newPoint);
 				//System.out.println("Adding " + newPoint + " to sameClusterToBeProcessed");
@@ -420,15 +450,18 @@ class Cluster {
 		this.points = new ArrayList<Point>();
 		this.neighbours = new ArrayList<Cluster>();
 		this.futureNeighbours = new ArrayList<Point>();
-		this.addPoint(p);
 		this.colour = p.value;
+		this.addPoint(p);
 		this.z = z;
 	}
 
-	public void addPoint(Point p) {
+	public void addPoint(Point p, boolean setPointCluster) {
 		if (!this.points.contains(p)) {
 			this.points.add(p);
-			p.setCluster(this);
+			//a point can be in multiple clusters -- but it only owns a cluster of the same value.
+			if (setPointCluster) {
+				p.setCluster(this);
+			}
 		}
 	}
 
