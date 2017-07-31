@@ -21,7 +21,8 @@ import externalPluginCopies.FilterPlugin.FilterType;
 import java.util.*;
 
 public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter {
-	
+	//start at 4-5-6 up to 11-12-13
+	//compare the 4-5-6 slice 0 clustering with the 4-5-6 and 5-6-7 (and would be 3-4-5 but too low) on slice 1 but not 6-7-8 -- too big a jump
 
 
 	static int[] lut;
@@ -173,7 +174,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				}
 				while(key != null);
 				if (length > minClusterChainLength) {
-					System.out.println("Cluster " + firstKey + " had a chainLength of " + length);
+					//System.out.println("Cluster " + firstKey + " had a chainLength of " + length);
 				}
 				if (clusterLengths.containsKey(length)) {
 					clusterLengths.put(length, clusterLengths.get(length) + 1);
@@ -181,12 +182,40 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				else {
 					clusterLengths.put(length, 1);
 				}
+				if (length > 15) {
+					System.out.println(firstKey + " has a length of at least " + length);
+					ArrayList<Cluster> toBeDisplayed = new ArrayList<Cluster>();
+					key = firstKey;
+					do {
+						toBeDisplayed.add(key);
+						if (key.getSliceNumber() == stackSize) {
+							break;
+						}
+						next = pairedClustersBySlice.get(key.getSliceNumber()).get(key);
+						key = next;
+					}
+					while (key != null);
+					highlight(toBeDisplayed);
+				}
 			}
 		}
 		
 		System.out.println("Cluster lengths: " + clusterLengths);
 	}
 
+	public void highlight(ArrayList<Cluster> clusters) {
+		int whiteColour = 255;
+		for (Cluster c : clusters) {
+			ImageProcessor sliceProcessor = this.image.getStack().getProcessor(c.getSliceNumber());
+			byte[] pixels = (byte[]) sliceProcessor.getPixels();
+			
+			for (Point p : c.points) {
+				pixels[p.y*sliceProcessor.getWidth()+p.x] = (byte) whiteColour;
+			}
+			sliceProcessor.setPixels(pixels);
+			
+		}
+	}
 
 	public Float compareClusters(Cluster c1, Cluster c2) {
 		float centerXDist = Math.abs(c1.center[0] - c2.center[0]);
@@ -412,7 +441,7 @@ class Cluster {
 	}
 
 	public String toString() {
-		String toReturn = "Cluster starting at " + points.get(0);
+		String toReturn = "Cluster starting at " + points.get(0) + ","+this.z + " - ";
 		toReturn = toReturn + " with Area: " + area;
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
 		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
