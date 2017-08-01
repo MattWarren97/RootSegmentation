@@ -45,6 +45,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	HashMap<Integer, Integer> differenceCounts;
 	HashMap<Integer, HashMap<Cluster, Cluster>> pairedClustersBySlice;
 
+	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
 
 
 	/*public void run(ImageProcessor ip) {
@@ -71,6 +72,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	public void run(ImageProcessor ip) {
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //does this need to be synchronised?
 		this.pairedClustersBySlice = new HashMap<Integer, HashMap<Cluster, Cluster>>();
+		
+		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
+		
 		ImageStack stack = this.image.getStack(); //this too..?
 		int processors = Runtime.getRuntime().availableProcessors();
 		float slicesPerThread = (float) stack.getSize() / (float) processors;
@@ -78,12 +82,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		System.out.println(processors + " processors.");
 		int startSlice = 1;
 		Thread[] threads = new Thread[processors];
+		ObjectFinder[] finders = new ObjectFinder[processors];
 		for (int i = 0; i < processors; i++) {
 			runningSlicesComputedWithRemainder += slicesPerThread;
 			int end = (int) runningSlicesComputedWithRemainder;
-			Thread t = new Thread(new ObjectFinder(startSlice, end, stack, this));
+			ObjectFinder of = new ObjectFinder(startSlice, end, stack, this);
+			Thread t = new Thread(of);
 			t.start();
 			threads[i] = t;
+			finders[i] = of;
 			startSlice = end + 1;
 		}
 		
@@ -98,7 +105,16 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		
 		
 		//wait for the other threads to be finished...
-		System.out.println("Finished calculatign clusters for each image. Now trying to link them!");
+		System.out.println("Finished calculating clusters for each image. Now trying to link them!");
+		
+		for (int i = 0; i < processors; i++) {
+			ObjectFinder of = finders[i];
+			for (int sliceNumber = of.start; sliceNumber <= of.end; sliceNumber++) {
+				HashMap<Integer, ArrayList<Cluster>> clusterValue_clusters_MAP = of.sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
+				this.sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
+			}
+		}
+				
 		findConnectedClusters();
 		findChainedClusters();
 	}			
@@ -253,7 +269,8 @@ class ObjectFinder implements Runnable {
 	
 	ArrayList<Point> newClusterToBeProcessed;
 	ArrayList<Point> sameClusterToBeProcessed;
-	HashMap<Integer, ArrayList<Cluster>>  clusters;
+	HashMap<Integer, ArrayList<Cluster>>  clusterValue_clusters_MAP;
+	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
 	Point[][] points;
 	
 	int sliceNumber;
@@ -263,6 +280,7 @@ class ObjectFinder implements Runnable {
 		this.end = end;
 		this.stack = stack;
 		this.cs = cs;
+		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
 	}
 	
 	public void run() {
@@ -274,6 +292,7 @@ class ObjectFinder implements Runnable {
 			connectivityAnalysis(nextSlice);
 			//cs.sliceClusterMap.put(sliceNumber, largeClusters);
 		}
+		findChains();
 	}
 	
 	public void convertTo4Bit(ImageProcessor ip) {
@@ -290,12 +309,12 @@ class ObjectFinder implements Runnable {
 		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
 					i < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
 		{
-			clusters.put(i, new ArrayList<Cluster>());
+			clusterValue_clusters_MAP.put(i, new ArrayList<Cluster>());
 		}
 
 		newClusterToBeProcessed = new ArrayList<Point>();
 		sameClusterToBeProcessed = new ArrayList<Point>();
-		clusters = new HashMap<Integer, ArrayList<Cluster>>();
+		clusterValue_clusters_MAP = new HashMap<Integer, ArrayList<Cluster>>();
 		
 		points = new Point[xMax+1][yMax+1];
 		for (int i = 0; i < xMax+1; i++) {
@@ -317,10 +336,13 @@ class ObjectFinder implements Runnable {
 			else {
 				if (currentCluster != null) {
 					//finalise the cluster --
-					ArrayList<Cluster> clusterList = clusters.get(currentCluster.value);
-					clusterList.add(currentCluster);
-					
-					clusters.put(currentCluster.value, clusterList);
+					if (currentCluster.getArea() > Color_Segmenter.minClusterSize) {
+						//only add a cluster to the data structure if it is large enough.
+						ArrayList<Cluster> clusterList = clusterValue_clusters_MAP.get(currentCluster.value);
+						clusterList.add(currentCluster);
+						
+						clusterValue_clusters_MAP.put(currentCluster.value, clusterList);
+					}
 					
 					for (Point p: currentCluster.points) {
 						// to allow these points to be added to other clusters too.
@@ -358,6 +380,16 @@ class ObjectFinder implements Runnable {
 				newClusterToBeProcessed.remove(0);
 			}
 		}
+		
+		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+					i < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+		{
+			ArrayList<Cluster> clusters = clusterValue_clusters_MAP.get(i);
+			for (Cluster c: clusters) {
+				c.postProcessing();
+			}
+		}
+		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
 	}
 	
 	public void considerPoint(int x, int y, Cluster currentCluster) {
@@ -411,6 +443,11 @@ class ObjectFinder implements Runnable {
 			p.accountedForInNewCluster = true;
 		}
 	}
+	
+	//not implemented at this stage (while still divided into multiple threads) yet.
+	public void findChains() {
+	}
+		
 }
 /*class ObjectFinder implements Runnable {
 	
