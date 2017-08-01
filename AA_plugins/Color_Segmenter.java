@@ -226,7 +226,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			return null;
 		}
 
-		float colourDifference = (float) Math.abs(c1.colour - c2.colour);
+		float colourDifference = (float) Math.abs(c1.value - c2.value);
 		float aspectRatioChange = (float) Math.abs((c1.aspectRatio - c2.aspectRatio)/(c1.aspectRatio + c2.aspectRatio));
 		//changed areaDiference -- now divides by c1+c2 -- because otherwise it seems inconsitent TODO.
 
@@ -241,6 +241,180 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 class ObjectFinder implements Runnable {
 	
 	
+	//TODO: Do I use neighbours for anything? I don't think I do -- could that be removed?
+	
+	int start, end;
+	ImageStack stack;
+	Color_Segmenter cs;
+	
+	static int rootLowerBound = 4; //so 4-5-6 is allowed
+	static int rootUpperBound = 13; //so 11-12-13 is allowed.
+	static int clusterDeviation = 1;
+	
+	ArrayList<Point> newClusterToBeProcessed;
+	ArrayList<Point> sameClusterToBeProcessed;
+	HashMap<Integer, ArrayList<Cluster>>  clusters;
+	Point[][] points;
+	
+	int sliceNumber;
+	
+	public ObjectFinder(int start, int end, ImageStack stack, Color_Segmenter cs) {
+		this.start = start;
+		this.end = end;
+		this.stack = stack;
+		this.cs = cs;
+	}
+	
+	public void run() {
+		System.out.println("Thread between " + start + "-" + end + " has begun.");
+		for (sliceNumber = start; sliceNumber <= end; sliceNumber++) {
+			System.out.println("Run on Slice: " + sliceNumber);
+			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
+			convertTo4Bit(nextSlice);
+			connectivityAnalysis(nextSlice);
+			//cs.sliceClusterMap.put(sliceNumber, largeClusters);
+		}
+	}
+	
+	public void convertTo4Bit(ImageProcessor ip) {
+		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
+		ip.applyTable(Color_Segmenter.lut);
+	}
+	
+	public void connectivityAnalysis(ImageProcessor ip) {
+		int xMin = 0;
+		int yMin = 0;
+		int xMax = this.cs.X - 1;
+		int yMax = this.cs.Y - 1;
+		
+		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+					i < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+		{
+			clusters.put(i, new ArrayList<Cluster>());
+		}
+
+		newClusterToBeProcessed = new ArrayList<Point>();
+		sameClusterToBeProcessed = new ArrayList<Point>();
+		clusters = new HashMap<Integer, ArrayList<Cluster>>();
+		
+		points = new Point[xMax+1][yMax+1];
+		for (int i = 0; i < xMax+1; i++) {
+			for (int j = 0; j < yMax+1; j++) {
+				points[i][j] = new Point(i, j, ip.get(i, j));
+			}
+		}
+		
+		addToNewClusterList(points[0][0]);
+		
+		Cluster currentCluster = null;
+		while(!(newClusterToBeProcessed.isEmpty() && sameClusterToBeProcessed.isEmpty())) {
+			Point nextPoint;
+			boolean fromSameCluster;
+			if (!sameClusterToBeProcessed.isEmpty()) {
+				nextPoint = sameClusterToBeProcessed.get(0);
+				fromSameCluster = true;
+			}
+			else {
+				if (currentCluster != null) {
+					//finalise the cluster --
+					ArrayList<Cluster> clusterList = clusters.get(currentCluster.value);
+					clusterList.add(currentCluster);
+					
+					clusters.put(currentCluster.value, clusterList);
+					
+					for (Point p: currentCluster.points) {
+						// to allow these points to be added to other clusters too.
+						p.accountedForInSameCluster = false;
+					}
+				}
+				
+				nextPoint = newClusterToBeProcessed.get(0);
+				fromSameCluster = false;
+				currentCluster = new Cluster(nextPoint, sliceNumber);
+				
+			}
+			
+			
+			if (nextPoint.x - 1 >= xMin) {
+				considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
+			}
+			
+			if (nextPoint.x + 1 <= xMax) {
+				considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster);
+			}
+			
+			if (nextPoint.y - 1 >= yMin) {
+				considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster);
+			}
+			
+			if (nextPoint.y + 1 <= yMax) {
+				considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster);
+			}
+			
+			if (fromSameCluster) {
+				sameClusterToBeProcessed.remove(0);
+			}
+			else {
+				newClusterToBeProcessed.remove(0);
+			}
+		}
+	}
+	
+	public void considerPoint(int x, int y, Cluster currentCluster) {
+		Point newPoint = points[x][y];
+		boolean hasCluster = false;
+		if (newPoint.hasCluster) {
+			//then that cluster is either the currentCluster, [in which case nothing to do here]
+			// or it is a completed cluster. Points in a completed cluster may be added to other clusters too.
+			// but points in a completed cluster don't need to be processed again.
+			if (newPoint.cluster == currentCluster) {
+				return;
+			}
+			else {
+				hasCluster = true;
+			}
+		}
+		if (Math.abs(newPoint.value - currentCluster.value) <= ObjectFinder.clusterDeviation) {
+			boolean sameValue = (newPoint.value == currentCluster.value);
+			currentCluster.addPoint(newPoint, sameValue);
+			//will be processed to complete this cluster
+			
+			addToSameClusterList(newPoint);
+			
+			if (!sameValue && !hasCluster) {
+				//if the point isn't the same value, it needs to be processed as it's own cluster also.
+				addToNewClusterList(newPoint);
+			}
+		}
+		else {
+			if (!hasCluster) {
+				addToNewClusterList(newPoint);
+			}
+		}
+		/*else {
+			if (!hasCluster)
+			currentCluster.addNeighbour(newPoint);
+		}*/
+			
+	}
+	public void addToSameClusterList(Point p) {
+		//if it has already been added to the list -- then 
+		if (!p.accountedForInSameCluster) {
+			sameClusterToBeProcessed.add(p);
+			p.accountedForInSameCluster = true;
+		}
+	}
+	
+	public void addToNewClusterList(Point p) {
+		if (!p.accountedForInNewCluster) {
+			newClusterToBeProcessed.add(p);
+			p.accountedForInNewCluster = true;
+		}
+	}
+}
+/*class ObjectFinder implements Runnable {
+	
+	
 	//TODO
 	//problems:
 	//- newPoint.hasCluster is no longer sufficient to rule out processing a point.
@@ -250,7 +424,9 @@ class ObjectFinder implements Runnable {
 	//- need to store clusters by their central value so that I can discriminate in comparing a 4-5-6 with  only 5-6-7, not any 7-8-9.
 	//- Could implement some level of chain-linkingAnalysis to the ObjectFinder (still in parallelised) --
 	//	then use those results later on to combine across the arbitrary divisions [would speed it up].
-	
+	//- What if I want to change the limits for a root (1-2-3 and up allowed or.. etc. (?), or make it 8, or 32 bins rather than 16..
+	//	Should make the actual numbers (4-5-6 / 11-12-13) at the boundaries changeable.
+	//- While doing this, might as well fix the A-B-C-D-E-F-G... & B-C-D-E-F_G... problem.
 	
 	int start, end;
 	ImageStack stack;
@@ -405,7 +581,7 @@ class ObjectFinder implements Runnable {
 			}
 		}
 	}
-}
+}*/
 
 class Point {
 	public int x;
@@ -413,11 +589,15 @@ class Point {
 	public int value;
 	public Cluster cluster;
 	public boolean hasCluster;
+	public boolean accountedForInSameCluster;
+	public boolean accountedForInNewCluster;
 
 	public Point (int x, int y, int v) {
 		this.x = x;
 		this.y = y;
 		this.setValue(v);
+		this.accountedForInSameCluster = false;
+		this.accountedForInNewCluster = false;
 	}
 
 	public void setValue(int v) {
@@ -440,7 +620,7 @@ class Cluster {
 	public ArrayList<Point> points;
 	public ArrayList<Cluster> neighbours;
 	private ArrayList<Point> futureNeighbours;
-	public int colour;
+	public int value;
 	public int area;
 	public float aspectRatio;
 	public float[] center;
@@ -450,8 +630,8 @@ class Cluster {
 		this.points = new ArrayList<Point>();
 		this.neighbours = new ArrayList<Cluster>();
 		this.futureNeighbours = new ArrayList<Point>();
-		this.colour = p.value;
-		this.addPoint(p);
+		this.value = p.value;
+		this.addPoint(p, true);
 		this.z = z;
 	}
 
@@ -479,7 +659,7 @@ class Cluster {
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
 		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
 		toReturn = toReturn + ", NeighbourCount: " + countNeighbours();
-		toReturn = toReturn + ", Colour: " + colour;
+		toReturn = toReturn + ", Value: " + value;
 		return toReturn;
 	}
 
@@ -521,8 +701,8 @@ class Cluster {
 		return center;
 	}
 
-	public int getColour() {
-		return this.colour;
+	public int getValue() {
+		return this.value;
 	}
 
 	public void postProcessing() {
