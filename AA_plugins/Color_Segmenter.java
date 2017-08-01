@@ -80,7 +80,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		ImageStack stack = this.image.getStack(); //this too..?
 		int processors = Runtime.getRuntime().availableProcessors();
 		float slicesPerThread = (float) stack.getSize() / (float) processors;
-		float runningSlicesComputedWithRemainder = 0; //to ensure that you don't have 10,10,10,19 slices for each thread - will be even now.
+		float runningSlicesComputedWithRemainder = 0.01f; //to ensure that you don't have 10,10,10,19 slices for each thread - will be even now.
+		//set to 0.01 to avoid 10/3 = 3.333, 3* 3.333 = 9.999 [in which case slice 10 doesn't get used].
 		System.out.println(processors + " processors.");
 		int startSlice = 1;
 		Thread[] threads = new Thread[processors];
@@ -89,6 +90,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			runningSlicesComputedWithRemainder += slicesPerThread;
 			int end = (int) runningSlicesComputedWithRemainder;
 			ObjectFinder of = new ObjectFinder(startSlice, end, stack, this);
+			//System.out.println("Process " + i + " -- " + runningSlicesComputedWithRemainder);
 			Thread t = new Thread(of);
 			t.start();
 			threads[i] = t;
@@ -119,7 +121,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				
 		findConnectedClusters();
 		findChainedClusters();
-	}			
+	}
 			
 	public void findConnectedClusters() {
 		HashMap<Cluster, Cluster> connectedClusters;
@@ -162,6 +164,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						
 				}
 			}
+			
+			pairedClustersBySlice.put(sliceNumber, connectedClusters);
 		}
 	}
 				
@@ -215,7 +219,21 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	//need to fix this I suppose.
 	//Then I can get to visualising the results.
 	public void findChainedClusters() {
-		HashMap<Integer, Integer> clusterLengths = new HashMap<Integer, Integer>();
+		
+		System.out.println("begin findChainedClusters()");
+		for (int sliceNumber = 1; sliceNumber < this.image.getStackSize() - 1; sliceNumber++) {
+			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
+			ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
+			Set<Cluster> valuesSet = new HashSet<Cluster>(connectedClusters.values());
+			//System.out.println("valuesList " + valuesList.size());
+			//System.out.println("valuesSet " + valuesSet.size());
+			if (valuesList.size() != valuesSet.size()) {
+				System.out.println("On slice " + sliceNumber + ", valuesList: " + valuesList.size() + ", valuesSet: " + valuesSet.size());
+			}
+		}
+		System.out.println("finished findChainedClusters");
+		
+		/*HashMap<Integer, Integer> clusterLengths = new HashMap<Integer, Integer>();
 		int stackSize = this.image.getStackSize();
 		for (int i = 1; i <= stackSize - minClusterChainLength; i++) {
 			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(i);
@@ -261,7 +279,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			}
 		}
 		
-		System.out.println("Cluster lengths: " + clusterLengths);
+		System.out.println("Cluster lengths: " + clusterLengths);*/
 	}
 
 	public void highlight(ArrayList<Cluster> clusters) {
@@ -347,20 +365,24 @@ class ObjectFinder implements Runnable {
 	}
 	
 	public void connectivityAnalysis(ImageProcessor ip) {
+		
+		System.out.println("Begin connectivityAnalysis on " + sliceNumber);
 		int xMin = 0;
 		int yMin = 0;
 		int xMax = this.cs.X - 1;
 		int yMax = this.cs.Y - 1;
 		
-		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-					i < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
-		{
-			clusterValue_clusters_MAP.put(i, new ArrayList<Cluster>());
-		}
-
+		
 		newClusterToBeProcessed = new ArrayList<Point>();
 		sameClusterToBeProcessed = new ArrayList<Point>();
 		clusterValue_clusters_MAP = new HashMap<Integer, ArrayList<Cluster>>();
+		
+		
+		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+		{
+			clusterValue_clusters_MAP.put(i, new ArrayList<Cluster>());
+		}
 		
 		points = new Point[xMax+1][yMax+1];
 		for (int i = 0; i < xMax+1; i++) {
@@ -372,7 +394,10 @@ class ObjectFinder implements Runnable {
 		addToNewClusterList(points[0][0]);
 		
 		Cluster currentCluster = null;
+		
+		int count = 0;
 		while(!(newClusterToBeProcessed.isEmpty() && sameClusterToBeProcessed.isEmpty())) {
+			count++;
 			Point nextPoint;
 			boolean fromSameCluster;
 			if (!sameClusterToBeProcessed.isEmpty()) {
@@ -382,11 +407,19 @@ class ObjectFinder implements Runnable {
 			else {
 				if (currentCluster != null) {
 					//finalise the cluster --
-					if (currentCluster.getArea() > Color_Segmenter.minClusterSize) {
+					if (currentCluster.getArea() > Color_Segmenter.minClusterSize
+							&& currentCluster.value >= ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation
+							&& currentCluster.value <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation) 
+					{
 						//only add a cluster to the data structure if it is large enough.
 						ArrayList<Cluster> clusterList = clusterValue_clusters_MAP.get(currentCluster.value);
-						clusterList.add(currentCluster);
 						
+						try {
+							clusterList.add(currentCluster);
+						} catch (Exception e) {
+							System.out.println("Value at failure: ");
+							System.out.println(currentCluster.value);
+						}
 						clusterValue_clusters_MAP.put(currentCluster.value, clusterList);
 					}
 					
@@ -402,6 +435,9 @@ class ObjectFinder implements Runnable {
 				
 			}
 			
+			if (count %10000 == 0) {
+				System.out.println("count: " + count + ". Next point: " + nextPoint);
+			}
 			
 			if (nextPoint.x - 1 >= xMin) {
 				considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
@@ -425,6 +461,7 @@ class ObjectFinder implements Runnable {
 			else {
 				newClusterToBeProcessed.remove(0);
 			}
+			
 		}
 		
 		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
@@ -487,11 +524,14 @@ class ObjectFinder implements Runnable {
 		if (!p.accountedForInNewCluster) {
 			newClusterToBeProcessed.add(p);
 			p.accountedForInNewCluster = true;
+
 		}
 	}
 	
 	//not implemented at this stage (while still divided into multiple threads) yet.
 	public void findChains() {
+		
+		System.err.println("findChains is not implemented yet!!");
 	}
 		
 }
