@@ -33,6 +33,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static float maxCenterDistance = 5;
 	static int minClusterChainLength = 15;
 	
+	static int maximumColourDifference = 1;
+	
 	static {
 		lut = new int[256];
 		for (int i = 0; i< 256; i++) {
@@ -119,8 +121,52 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		findChainedClusters();
 	}			
 			
-		
 	public void findConnectedClusters() {
+		HashMap<Cluster, Cluster> connectedClusters;
+		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
+			connectedClusters = new HashMap<Cluster, Cluster>();
+			
+			for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+						clusterValue < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; 
+								clusterValue++) 
+			{
+				HashMap<Integer, ArrayList<Cluster>> current_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
+				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
+				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
+				
+				for (Cluster c1: clusters1) {
+					float minDifference = -1;
+					Cluster bestCluster = null;
+					for (int nextClusterValue = clusterValue - maximumColourDifference; 
+								nextClusterValue <= clusterValue + maximumColourDifference; 
+										nextClusterValue++) 
+					{
+						ArrayList<Cluster> clusters2 = next_clusterValue_clusters_MAP.get(nextClusterValue);
+						for (Cluster c2 : clusters2) {
+							Float difference = compareClusters(c1, c2);
+							if (difference == null) {
+								//clusters are too far apart to attempt joining...
+								continue;
+							}
+							
+							if (difference < minDifference || minDifference == -1) {
+								minDifference = difference;
+								bestCluster = c2;
+							}
+						}
+					}
+					
+					if (minDifference != -1) {
+						connectedClusters.put(c1, bestCluster);
+					}
+						
+				}
+			}
+		}
+	}
+				
+				
+	/*public void findConnectedClusters() {
 		//500x500x300 - {0=259633, 1=169307, 2=20573, 3=3660, 4=1021, 5=362, 6=101, 7=34, 8=14, 9=10, 10=1, 14=1} [more than 1 each]
 		//500x500x300 - {0=257548, 1=131425, 2=15536, 3=2866, 4=824, 5=297, 6=86, 7=32, 8=8, 9=8, 10=1, 14=1} [only 1 each].
 		//A_cropped - {0=1891759, 1=395663, 2=19213, 3=1285, 4=303, 5=153, 6=130, 7=283, 8=701, 9=892, 10=573, 11=239, 12=66, 13=15, 14=1, 15=13}
@@ -151,7 +197,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			System.out.println("Completed difference mapping for slice " + i);
 			pairedClustersBySlice.put(i, connectedClusters);
 		}
-	}
+	}*/
 	
 	//minimum length of chains found will be 2 bc it is known they are connected to at least one...
 	
