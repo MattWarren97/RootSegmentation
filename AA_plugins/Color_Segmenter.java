@@ -122,7 +122,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 				
 		findConnectedClusters();
-		findChainedClusters();
+		//findChainedClusters();
 	}
 			
 	public void findConnectedClusters() {
@@ -136,6 +136,22 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			{
 				HashMap<Integer, ArrayList<Cluster>> current_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
 				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
+				System.out.println("Current: " + current_clusterValue_clusters_MAP.size());
+				for (int i = 0; i < current_clusterValue_clusters_MAP.size(); i++) {
+					if (current_clusterValue_clusters_MAP.get(i) == null) {
+						System.out.println(i + " null");
+					}
+					else {
+						System.out.println(i + " not null");
+					}
+					System.out.println(i + ": " + current_clusterValue_clusters_MAP.get(i).size());
+				}
+				System.out.println("Next: " + next_clusterValue_clusters_MAP.size());
+				try {
+					Thread.sleep(20000);
+				}
+				catch (Exception e) {}
+				
 				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
 				
 				for (Cluster c1: clusters1) {
@@ -145,7 +161,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								nextClusterValue <= clusterValue + maximumColourDifference; 
 										nextClusterValue++) 
 					{
+						System.out.println("HERE - where that NULLPOINTER was!!!");
 						ArrayList<Cluster> clusters2 = next_clusterValue_clusters_MAP.get(nextClusterValue);
+						System.out.println("Just starting out here, nextClusterValue will be " + nextClusterValue);
+						//System.out.println(next_clusterValue_clusters_MAP);
+						return;
+						/*if (clusters2.isEmpty()) {
+							System.out.println(sliceNumber + ", " + nextClusterValue + " has empty clusters2");
+						}
 						for (Cluster c2 : clusters2) {
 							Float difference = compareClusters(c1, c2);
 							if (difference == null) {
@@ -157,7 +180,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								minDifference = difference;
 								bestCluster = c2;
 							}
-						}
+						}*/
 					}
 					
 					if (minDifference != -1) {
@@ -482,7 +505,10 @@ class ObjectFinder implements Runnable {
 			}
 		}
 		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
-		System.out.println("LargeClusters: " + largeClusters);
+		for (int i = 0; i < clusterValue_clusters_MAP.size(); i++) {
+			System.out.println(sliceNumber + ": " + i + ", " + clusterValue_clusters_MAP.get(i).size());
+		}
+		//System.out.println("LargeClusters: " + largeClusters);
 	}
 	
 	public void considerPoint(int x, int y, Cluster currentCluster, Point prevPoint) {
@@ -794,6 +820,7 @@ class Cluster {
 	}
 
 	public String toString() {
+		this.calculateValues();
 		String toReturn = "Cluster starting at " + points.get(0) + ","+this.z + " - ";
 		toReturn = toReturn + " with Area: " + area;
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
