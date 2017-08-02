@@ -36,9 +36,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static int maximumColourDifference = 1;
 	
 	static {
+		int binsRequired = 32;
+		float divisor = (float)256/(float) binsRequired;
 		lut = new int[256];
 		for (int i = 0; i< 256; i++) {
-			lut[i] = i/16;
+			lut[i] = (int) ((float)i/divisor);
 		}
 	}
 	
@@ -327,9 +329,10 @@ class ObjectFinder implements Runnable {
 	ImageStack stack;
 	Color_Segmenter cs;
 	
-	static int rootLowerBound = 4; //so 4-5-6 is allowed
-	static int rootUpperBound = 13; //so 11-12-13 is allowed.
+	static int rootLowerBound = 8; //so 4-5-6 is allowed
+	static int rootUpperBound = 26; //so 11-12-13 is allowed.
 	static int clusterDeviation = 1;
+	int count;
 	
 	ArrayList<Point> newClusterToBeProcessed;
 	ArrayList<Point> sameClusterToBeProcessed;
@@ -345,6 +348,7 @@ class ObjectFinder implements Runnable {
 		this.stack = stack;
 		this.cs = cs;
 		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
+		this.count = 0;
 	}
 	
 	public void run() {
@@ -366,7 +370,7 @@ class ObjectFinder implements Runnable {
 	
 	public void connectivityAnalysis(ImageProcessor ip) {
 		
-		System.out.println("Begin connectivityAnalysis on " + sliceNumber);
+		//System.out.println("Begin connectivityAnalysis on " + sliceNumber);
 		int xMin = 0;
 		int yMin = 0;
 		int xMax = this.cs.X - 1;
@@ -376,7 +380,7 @@ class ObjectFinder implements Runnable {
 		newClusterToBeProcessed = new ArrayList<Point>();
 		sameClusterToBeProcessed = new ArrayList<Point>();
 		clusterValue_clusters_MAP = new HashMap<Integer, ArrayList<Cluster>>();
-		
+		int largeClusters = 0;
 		
 		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
 					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
@@ -395,7 +399,7 @@ class ObjectFinder implements Runnable {
 		
 		Cluster currentCluster = null;
 		
-		int count = 0;
+		
 		while(!(newClusterToBeProcessed.isEmpty() && sameClusterToBeProcessed.isEmpty())) {
 			count++;
 			Point nextPoint;
@@ -412,6 +416,7 @@ class ObjectFinder implements Runnable {
 							&& currentCluster.value <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation) 
 					{
 						//only add a cluster to the data structure if it is large enough.
+						largeClusters++;
 						ArrayList<Cluster> clusterList = clusterValue_clusters_MAP.get(currentCluster.value);
 						
 						try {
@@ -430,29 +435,33 @@ class ObjectFinder implements Runnable {
 				}
 				
 				nextPoint = newClusterToBeProcessed.get(0);
+				if (nextPoint.hasCluster) {
+					newClusterToBeProcessed.remove(0);
+					continue;
+				}
 				fromSameCluster = false;
 				currentCluster = new Cluster(nextPoint, sliceNumber);
 				
 			}
-			
+
 			if (count %10000 == 0) {
-				System.out.println("count: " + count + ". Next point: " + nextPoint);
+				//System.out.println("count: " + count + ", " + nextPoint + ", val: " + nextPoint.value + ", hasCl: " + nextPoint.hasCluster + ", accNew: " + nextPoint.accountedForInNewCluster + ", accSame: " + nextPoint.accountedForInSameCluster + ", considered: " + nextPoint.considered + ", addedNew: " + nextPoint.addedToNewClusterList + ", addedSame: " + nextPoint.addedToSameClusterList + ", fromSame: " + fromSameCluster + ", sameSize: " + sameClusterToBeProcessed.size() + ", newSize: " + newClusterToBeProcessed.size());
 			}
 			
 			if (nextPoint.x - 1 >= xMin) {
-				considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
+				considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster, nextPoint);
 			}
 			
 			if (nextPoint.x + 1 <= xMax) {
-				considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster);
+				considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster, nextPoint);
 			}
 			
 			if (nextPoint.y - 1 >= yMin) {
-				considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster);
+				considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster, nextPoint);
 			}
 			
 			if (nextPoint.y + 1 <= yMax) {
-				considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster);
+				considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster, nextPoint);
 			}
 			
 			if (fromSameCluster) {
@@ -473,10 +482,15 @@ class ObjectFinder implements Runnable {
 			}
 		}
 		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
+		System.out.println("LargeClusters: " + largeClusters);
 	}
 	
-	public void considerPoint(int x, int y, Cluster currentCluster) {
+	public void considerPoint(int x, int y, Cluster currentCluster, Point prevPoint) {
 		Point newPoint = points[x][y];
+		newPoint.considered++;
+		
+		//System.out.println("count: " + count + ", " + newPoint + ", prevPoint: " + prevPoint +", val: " + newPoint.value + ", hasCl: " + newPoint.hasCluster + ", accNew: " + newPoint.accountedForInNewCluster + ", accSame: " + newPoint.accountedForInSameCluster + ", considered: " + newPoint.considered + ", addedNew: " + newPoint.addedToNewClusterList + ", addedSame: " + newPoint.addedToSameClusterList + ", sameSize: " + sameClusterToBeProcessed.size() + ", newSize: " + newClusterToBeProcessed.size());
+		
 		boolean hasCluster = false;
 		if (newPoint.hasCluster) {
 			//then that cluster is either the currentCluster, [in which case nothing to do here]
@@ -514,17 +528,22 @@ class ObjectFinder implements Runnable {
 	}
 	public void addToSameClusterList(Point p) {
 		//if it has already been added to the list -- then 
+		
 		if (!p.accountedForInSameCluster) {
 			sameClusterToBeProcessed.add(p);
+			p.addedToSameClusterList++;
 			p.accountedForInSameCluster = true;
+			//System.out.println(p + " added to sameClusterList");
+
 		}
 	}
 	
 	public void addToNewClusterList(Point p) {
 		if (!p.accountedForInNewCluster) {
 			newClusterToBeProcessed.add(p);
+			p.addedToNewClusterList++;
 			p.accountedForInNewCluster = true;
-
+			//System.out.println(p + " added to newClusterList");
 		}
 	}
 	
@@ -714,6 +733,9 @@ class Point {
 	public boolean hasCluster;
 	public boolean accountedForInSameCluster;
 	public boolean accountedForInNewCluster;
+	public int considered;
+	public int addedToNewClusterList;
+	public int addedToSameClusterList;
 
 	public Point (int x, int y, int v) {
 		this.x = x;
@@ -721,6 +743,9 @@ class Point {
 		this.setValue(v);
 		this.accountedForInSameCluster = false;
 		this.accountedForInNewCluster = false;
+		this.considered = 0;
+		this.addedToNewClusterList = 0;
+		this.addedToSameClusterList = 0;
 	}
 
 	public void setValue(int v) {
@@ -741,8 +766,6 @@ class Point {
 
 class Cluster {
 	public ArrayList<Point> points;
-	public ArrayList<Cluster> neighbours;
-	private ArrayList<Point> futureNeighbours;
 	public int value;
 	public int area;
 	public float aspectRatio;
@@ -751,8 +774,6 @@ class Cluster {
 
 	public Cluster(Point p, int z) {
 		this.points = new ArrayList<Point>();
-		this.neighbours = new ArrayList<Cluster>();
-		this.futureNeighbours = new ArrayList<Point>();
 		this.value = p.value;
 		this.addPoint(p, true);
 		this.z = z;
@@ -768,10 +789,6 @@ class Cluster {
 		}
 	}
 
-	public void addNeighbour(Point p) {
-		this.futureNeighbours.add(p);
-	}
-
 	public int getArea() {
 		return this.points.size();
 	}
@@ -781,7 +798,6 @@ class Cluster {
 		toReturn = toReturn + " with Area: " + area;
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
 		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
-		toReturn = toReturn + ", NeighbourCount: " + countNeighbours();
 		toReturn = toReturn + ", Value: " + value;
 		return toReturn;
 	}
@@ -829,20 +845,7 @@ class Cluster {
 	}
 
 	public void postProcessing() {
-		for (Point p: futureNeighbours) {
-			if (!neighbours.contains(p.cluster)) {
-				if (p.cluster.getArea() >= Color_Segmenter.minClusterSize) {
-					//we don't care much if it borders an outlier pixel
-					neighbours.add(p.cluster);
-				}
-			}
-		}
-		futureNeighbours = null;
 		calculateValues();
-	}
-
-	public int countNeighbours() {
-		return this.neighbours.size();
 	}
 
 	public void calculateValues() {
