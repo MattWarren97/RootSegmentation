@@ -27,9 +27,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static int[] lut;
 	static int minClusterSize = 20;
 
-	static float colourDifferenceWeight = 0.5f;
-	static float areaDifferenceWeight = 5;
-	static float aspectRatioDifferenceWeight = 0.5f;
+	static float colourDifferenceWeight = 0.1f;
+	static float areaDifferenceWeight = 5.0f;
+	static float aspectRatioDifferenceWeight = 1.0f;
 	static float maxCenterDistance = 5;
 	static int minClusterChainLength = 15;
 	
