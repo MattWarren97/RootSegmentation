@@ -27,9 +27,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static int[] lut;
 	static int minClusterSize = 20;
 
-	static float colourDifferenceWeight = 1;
-	static float areaDifferenceWeight = 1;
-	static float aspectRatioDifferenceWeight = 1;
+	static float colourDifferenceWeight = 0.5f;
+	static float areaDifferenceWeight = 5;
+	static float aspectRatioDifferenceWeight = 0.5f;
 	static float maxCenterDistance = 5;
 	static int minClusterChainLength = 15;
 	
@@ -122,7 +122,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 
 		findConnectedClusters();
-		findChainedClusters();
+		displayClusterPairs();
+		//findChainedClusters();
 	}
 			
 	public void findConnectedClusters() {
@@ -197,7 +198,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 	}
 				
-				
+
 	/*public void findConnectedClusters() {
 		//500x500x300 - {0=259633, 1=169307, 2=20573, 3=3660, 4=1021, 5=362, 6=101, 7=34, 8=14, 9=10, 10=1, 14=1} [more than 1 each]
 		//500x500x300 - {0=257548, 1=131425, 2=15536, 3=2866, 4=824, 5=297, 6=86, 7=32, 8=8, 9=8, 10=1, 14=1} [only 1 each].
@@ -231,6 +232,57 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 	}*/
 	
+	
+	public void displayClusterPairs() {
+		//System.out.println(pairedClustersBySlice);
+		HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
+		ImageProcessor sliceOne = this.image.getStack().getProcessor(1);
+		ImageProcessor sliceTwo = this.image.getStack().getProcessor(2);
+		int count = 0;
+		for (Cluster c1: connectedClusters.keySet()) {
+			if (!(c1.value == 12 || c1.value == 11)) {
+				continue;
+			}
+			if (Math.abs(c1.center[0] - 115) > 4) {
+				continue;
+			}
+			count++;
+			Cluster c2 = connectedClusters.get(c1);
+			System.out.println("Pair " + count + " c1Val: " + c1.value + ", c2Val: " + c2.value);
+			ImageProcessor newSliceOne = sliceOne.duplicate();
+			ImageProcessor newSliceTwo = sliceTwo.duplicate();
+			
+			int whiteColour = 255;
+			byte[] pixels1 = (byte[]) newSliceOne.getPixels();
+			byte[] pixels2 = (byte[]) newSliceTwo.getPixels();
+			for (Point p : c1.points) {
+				pixels1[p.y*newSliceOne.getWidth()+p.x] = (byte) whiteColour;
+			}
+			for (Point p: c2.points) {
+				pixels2[p.y*newSliceTwo.getWidth() + p.x] = (byte) whiteColour;
+			}
+			newSliceOne.setPixels(pixels1);
+			newSliceTwo.setPixels(pixels2);
+			
+			this.image.getStack().addSlice(newSliceOne);
+			this.image.getStack().addSlice(newSliceTwo);
+		}
+			
+		/*HashMap<Cluster, Integer> valueAppearances = new HashMap<Cluster, Integer>();
+		for (Cluster key: connectedClusters.keySet()) {
+			Cluster value = connectedClusters.get(key);
+			if (valueAppearances.keySet().contains(value)) {
+				valueAppearances.put(value, valueAppearances.get(value) + 1);
+			}
+			else {
+				valueAppearances.put(value, 1);
+			}
+		}
+		System.out.println(valueAppearances);
+		//HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
+		//ImagePlus ip = this.image.duplicate();*/
+		this.image.show();
+	}
 	//minimum length of chains found will be 2 bc it is known they are connected to at least one...
 	
 	//problem is that A-B-C-D-E-F_G... will also get picked up as B-C_D_E_F_G.
@@ -839,7 +891,7 @@ class Cluster {
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
 		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
 		toReturn = toReturn + ", Value: " + value;
-		return toReturn;
+		return toReturn+"\n";
 	}
 
 	public float getAspectRatio() {
