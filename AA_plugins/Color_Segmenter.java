@@ -120,13 +120,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				this.sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
 			}
 		}
-				
+
 		findConnectedClusters();
-		//findChainedClusters();
+		findChainedClusters();
 	}
 			
 	public void findConnectedClusters() {
 		HashMap<Cluster, Cluster> connectedClusters;
+		System.out.println("started findConnectedClusters");
 		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
 			connectedClusters = new HashMap<Cluster, Cluster>();
 			
@@ -136,21 +137,18 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			{
 				HashMap<Integer, ArrayList<Cluster>> current_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
 				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
-				System.out.println("Current: " + current_clusterValue_clusters_MAP.size());
-				for (int i = 0; i < current_clusterValue_clusters_MAP.size(); i++) {
+				//System.out.println("Current: " + current_clusterValue_clusters_MAP.size());
+				/*for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+							i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+				{
 					if (current_clusterValue_clusters_MAP.get(i) == null) {
-						System.out.println(i + " null");
+						//System.out.println(i + " null");
 					}
 					else {
-						System.out.println(i + " not null");
+						//System.out.println(i + " not null");
 					}
 					System.out.println(i + ": " + current_clusterValue_clusters_MAP.get(i).size());
-				}
-				System.out.println("Next: " + next_clusterValue_clusters_MAP.size());
-				try {
-					Thread.sleep(20000);
-				}
-				catch (Exception e) {}
+				}*/
 				
 				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
 				
@@ -161,12 +159,17 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								nextClusterValue <= clusterValue + maximumColourDifference; 
 										nextClusterValue++) 
 					{
-						System.out.println("HERE - where that NULLPOINTER was!!!");
+						if (nextClusterValue < ObjectFinder.rootLowerBound+ObjectFinder.clusterDeviation ||
+									nextClusterValue > ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation)
+						{
+							//System.out.println("No clusters at value " + nextClusterValue + " - continuing");
+							continue;
+						}
+						//System.out.println("HERE - where that NULLPOINTER was!!!");
 						ArrayList<Cluster> clusters2 = next_clusterValue_clusters_MAP.get(nextClusterValue);
-						System.out.println("Just starting out here, nextClusterValue will be " + nextClusterValue);
+						//System.out.println("Just starting out here, nextClusterValue will be " + nextClusterValue);
 						//System.out.println(next_clusterValue_clusters_MAP);
-						return;
-						/*if (clusters2.isEmpty()) {
+						if (clusters2.isEmpty()) {
 							System.out.println(sliceNumber + ", " + nextClusterValue + " has empty clusters2");
 						}
 						for (Cluster c2 : clusters2) {
@@ -180,7 +183,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								minDifference = difference;
 								bestCluster = c2;
 							}
-						}*/
+						}
 					}
 					
 					if (minDifference != -1) {
@@ -189,7 +192,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						
 				}
 			}
-			
+			System.out.println("finished connections starting from slice " + sliceNumber);
 			pairedClustersBySlice.put(sliceNumber, connectedClusters);
 		}
 	}
@@ -246,7 +249,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	public void findChainedClusters() {
 		
 		System.out.println("begin findChainedClusters()");
-		for (int sliceNumber = 1; sliceNumber < this.image.getStackSize() - 1; sliceNumber++) {
+		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
 			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
 			ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
 			Set<Cluster> valuesSet = new HashSet<Cluster>(connectedClusters.values());
@@ -322,6 +325,12 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	}
 
 	public Float compareClusters(Cluster c1, Cluster c2) {
+		//System.out.println(c1.calculatedValues + ", " + c2.calculatedValues);
+		if (!(c1.calculatedValues && c2.calculatedValues)) {
+			System.out.println("c1: z-"+ c1.z + ", val-" + c1.value + " " + c1.calculatedValues);
+			System.out.println("c2: z-"+ c2.z + ", val-" + c2.value + " " + c1.calculatedValues);
+			System.out.println("Not both calculated!!");
+		}
 		float centerXDist = Math.abs(c1.center[0] - c2.center[0]);
 		float centerYDist = Math.abs(c1.center[1] - c2.center[1]);
 
@@ -376,6 +385,10 @@ class ObjectFinder implements Runnable {
 	
 	public void run() {
 		System.out.println("Thread between " + start + "-" + end + " has begun.");
+		if (start > end) {
+			System.out.println("Object finder ended - no slices to process!");
+			return;
+		}
 		for (sliceNumber = start; sliceNumber <= end; sliceNumber++) {
 			System.out.println("Run on Slice: " + sliceNumber);
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
@@ -495,9 +508,11 @@ class ObjectFinder implements Runnable {
 			}
 			
 		}
+
+		System.out.println("finished while loop on start: " + this.start);
 		
 		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-					i < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
 		{
 			ArrayList<Cluster> clusters = clusterValue_clusters_MAP.get(i);
 			for (Cluster c: clusters) {
@@ -505,15 +520,19 @@ class ObjectFinder implements Runnable {
 			}
 		}
 		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
-		for (int i = 0; i < clusterValue_clusters_MAP.size(); i++) {
+		/*for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+		{
+			System.out.println(this.start + " - " + this.end + ": value " + i + ", :");
+
 			System.out.println(sliceNumber + ": " + i + ", " + clusterValue_clusters_MAP.get(i).size());
-		}
+			
+		}*/
 		//System.out.println("LargeClusters: " + largeClusters);
 	}
 	
 	public void considerPoint(int x, int y, Cluster currentCluster, Point prevPoint) {
 		Point newPoint = points[x][y];
-		newPoint.considered++;
 		
 		//System.out.println("count: " + count + ", " + newPoint + ", prevPoint: " + prevPoint +", val: " + newPoint.value + ", hasCl: " + newPoint.hasCluster + ", accNew: " + newPoint.accountedForInNewCluster + ", accSame: " + newPoint.accountedForInSameCluster + ", considered: " + newPoint.considered + ", addedNew: " + newPoint.addedToNewClusterList + ", addedSame: " + newPoint.addedToSameClusterList + ", sameSize: " + sameClusterToBeProcessed.size() + ", newSize: " + newClusterToBeProcessed.size());
 		
@@ -557,7 +576,6 @@ class ObjectFinder implements Runnable {
 		
 		if (!p.accountedForInSameCluster) {
 			sameClusterToBeProcessed.add(p);
-			p.addedToSameClusterList++;
 			p.accountedForInSameCluster = true;
 			//System.out.println(p + " added to sameClusterList");
 
@@ -567,7 +585,6 @@ class ObjectFinder implements Runnable {
 	public void addToNewClusterList(Point p) {
 		if (!p.accountedForInNewCluster) {
 			newClusterToBeProcessed.add(p);
-			p.addedToNewClusterList++;
 			p.accountedForInNewCluster = true;
 			//System.out.println(p + " added to newClusterList");
 		}
@@ -759,9 +776,6 @@ class Point {
 	public boolean hasCluster;
 	public boolean accountedForInSameCluster;
 	public boolean accountedForInNewCluster;
-	public int considered;
-	public int addedToNewClusterList;
-	public int addedToSameClusterList;
 
 	public Point (int x, int y, int v) {
 		this.x = x;
@@ -769,9 +783,6 @@ class Point {
 		this.setValue(v);
 		this.accountedForInSameCluster = false;
 		this.accountedForInNewCluster = false;
-		this.considered = 0;
-		this.addedToNewClusterList = 0;
-		this.addedToSameClusterList = 0;
 	}
 
 	public void setValue(int v) {
@@ -797,12 +808,14 @@ class Cluster {
 	public float aspectRatio;
 	public float[] center;
 	public int z;
+	public boolean calculatedValues;
 
 	public Cluster(Point p, int z) {
 		this.points = new ArrayList<Point>();
 		this.value = p.value;
 		this.addPoint(p, true);
 		this.z = z;
+		this.calculatedValues = false;
 	}
 
 	public void addPoint(Point p, boolean setPointCluster) {
@@ -820,7 +833,7 @@ class Cluster {
 	}
 
 	public String toString() {
-		this.calculateValues();
+		//this.calculateValues();
 		String toReturn = "Cluster starting at " + points.get(0) + ","+this.z + " - ";
 		toReturn = toReturn + " with Area: " + area;
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
@@ -876,6 +889,7 @@ class Cluster {
 	}
 
 	public void calculateValues() {
+		this.calculatedValues = true;
 		this.area = getArea();
 		this.aspectRatio = getAspectRatio();
 		this.center = getCenter();
