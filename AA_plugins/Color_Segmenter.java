@@ -18,7 +18,7 @@ import ij.measure.Calibration;
 import externalPluginCopies.*;
 import externalPluginCopies.FilterPlugin.FilterType;
 
-import org.apache.commons.collections4.bidimap.*;
+import org.apache.commons.collections.bidimap.*;
 
 import java.util.*;
 
@@ -35,7 +35,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	static float maxCenterDistance = 5;
 	static int minClusterChainLength = 15;
 	
-	static int maximumColourDifference = 1;
+	static int maximumColourDifference = 1; //no of bins apart.
 	
 	static {
 		int binsRequired = 32;
@@ -296,7 +296,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					//(preExistingReplacedKey -> replaced) will remain in prevConnectedClusters.
 				}
 			}
-			it.remove
+			
 			else {
 				//there is nothing to be done.
 			}
