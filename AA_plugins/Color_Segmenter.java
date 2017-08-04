@@ -125,14 +125,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 
 		findConnectedClusters();
-		displayClusterPairs();
-		//findChainedClusters();
+		//displayClusterPairs();
+		findChainedClusters();
 	}
 	
 	public void findConnectedClusters() {
 		DualHashBidiMap<Cluster, Cluster> connectedClusters;
 		System.out.println("started findConnectedClusters");
 		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
+			System.out.println("Started connecting clusters on " + sliceNumber);
 			connectedClusters = new DualHashBidiMap<Cluster, Cluster>();
 			
 			for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
@@ -220,7 +221,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	}
 	
 	public void backPropagate(int startSlice) {
+		System.out.println("Starting backPropagating on " + startSlice + " size of replacements: " + this.replacements.size());
 		//if there si nothing to backPropagate, then does nothing.
+		if (this.replacements == null) {
+			System.out.println("replacements was null - failed");
+		}
 		if (this.replacements.size() == 0) {
 			System.out.println("Finished back propagating -- nothing to propagate back");
 			return;
@@ -233,33 +238,46 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			
 			return;
 		}
+		
 		//otherwise
+		System.out.println("Got through those initial checks");
 		DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(startSlice);
 		DualHashBidiMap<Cluster, Cluster> prevConnectedClusters = pairedClustersBySlice.get(startSlice - 1);
 		
-		
-		Iterator<Cluster> it = this.replacements.keySet().iterator();
+		HashMap<Cluster, Cluster> replacements = new HashMap<Cluster, Cluster>(this.replacements);
+		this.replacements = null;
+		Iterator<Cluster> it = replacements.keySet().iterator();
+		System.out.println("About to begin while loop");
 		while(it.hasNext()) {
 			Cluster replaced = it.next();
-			Cluster replacement = this.replacements.get(replaced);
+			System.out.println("Replaced: " + replaced);
+			Cluster replacement = replacements.get(replaced);
+			
+			System.out.println("Replacement: " + replacement);
+			
+			System.out.println(replaced == replacement);
 			
 			//what if A replaces C, but D then replaces A? 
-			while (this.replacements.containsKey(replacement)) {
-				replacement = this.replacements.get(replacement);
+			while (replacements.containsKey(replacement)) {
+				replacement = replacements.get(replacement);
 			}
-			
+			System.out.println("Outside second while loop");
 			//TODO fix the iterator (to remove items).
 			
 			
 			//if 'replacement' replaces 'replaced', fancy back-propagation is only needed when:
 			//('preExistingReplacedKey'->'replaced') exists in the prevConnectedClusters.
 			if (prevConnectedClusters.containsValue(replaced)) {
+				
+				System.out.println("A - true");
 				Cluster preExistingReplacedKey = prevConnectedClusters.getKey(replaced);
 				
 				//I want to set (preExistingReplacedKey -> replacement) as a pair [but can only do this if they meet certain conditions].
 				if(canCompareClusters(preExistingReplacedKey, replacement)) {
+					System.out.println("B - true");
 					//It's possible that replacement already had a different key [another conflict would arise].
 					if (prevConnectedClusters.containsValue(replacement)) {
+						System.out.println("C - true");
 						Cluster preExistingReplacementKey = prevConnectedClusters.getKey(replacement);
 						//then we will need to backPropagate further.
 						//Only one of [(preExistingReplacedKey -> replacement) & (preExistingReplacementKey -> replacement)] can be used.
@@ -267,6 +285,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						Float replacementKeyDiff = compareClusters(preExistingReplacementKey, replacement);
 						
 						if (replacedKeyDiff < replacementKeyDiff) {
+							System.out.println("D - true");
 							//replacedKeyDiff is the best match for replacement.
 							//need to modify the prevConnectedClusters to reflect this, then propagate it back.
 							//prevConnectedClusters started with (preExistingReplacementKey -> replacement), 
@@ -277,6 +296,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 							prepareToBackPropagate(preExistingReplacedKey, preExistingReplacementKey);
 						}
 						else {
+							System.out.println("D - false");
 							//replacementKeyDiff is still the best match for replacement.
 							//so no immediate changes to make here.
 							//need to backPropagate in case some (F->preExistingReplacedKey) exists that might need to be updated to:
@@ -285,6 +305,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						}
 					}
 					else {
+						System.out.println("C - false");
 						//if not, then we can end this chain of changes here.
 						//replace (preExistingReplacedKey -> replaced) with (preExistingReplacedKey -> replacement)
 						prevConnectedClusters.put(preExistingReplacedKey, replacement);
@@ -292,12 +313,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					
 				}
 				else {
+					System.out.println("B - false");
 					//if preExistingReplacedKey can't link to replacement, then nothing need be changed/
 					//(preExistingReplacedKey -> replaced) will remain in prevConnectedClusters.
 				}
 			}
 			
 			else {
+				System.out.println("A - false");
 				//there is nothing to be done.
 			}
 		}
