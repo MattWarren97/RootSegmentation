@@ -186,7 +186,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								//remove the old association, add the new association, and prepare the 'back-propagation' of this change.
 								connectedClusters.remove(otherC1);
 								connectedClusters.put(c1, bestCluster);
-								backPropagate(c1, otherC1);
+								prepareToBackPropagate(c1, otherC1);
 							}
 							else {
 								//otherC1 is the best match for bestCluster.
@@ -206,26 +206,148 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			backPropagate(sliceNumber);
 		}
 	}
-				
+	
+	HashMap<Cluster, Cluster> replacements = new HashMap<Cluster, Cluster>();
+	
 	public void prepareToBackPropagate(Cluster replacement, Cluster replaced) {
+		this.replacements.put(replaced, replacement);
+	}
+	
+	public void backPropagate(int startSlice) {
+		//if there si nothing to backPropagate, then does nothing.
+		if (this.replacements.size() == 0) {
+			System.out.println("Finished back propagating -- nothing to propagate back");
+			return;
+		}
 		
+		//if looking at slice 1, then no 'prevConnectedClusters' will remain -- need to sort this out separately.
+		if (startSlice == 1){ 
+			//DO SOMETHING DIFFERENT.
+		}
+		//otherwise
+		DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(startSlice);
+		DualHashBidiMap<Cluster, Cluster> prevConnectedClusters = pairedClustersBySlice.get(startSlice - 1);
+		
+		for (Cluster replaced: this.replacements.keySet()) {
+			Cluster replacement = this.replacements.get(replaced);
+			
+			//what if A replaces C, but D then replaces A? 
+			while (this.replacements.containsKey(replacement)) {
+				replacement = this.replacements.get(replacement);
+			}
+			
+			//if 'replacement' replaces 'replaced', fancy back-propagation is only needed when:
+			//('preExistingReplacedKey'->'replaced') exists in the prevConnectedClusters.
+			if (prevConnectedClusters.inverseBidiMap.containsKey(replaced)) {
+				Cluster preExistingReplacedKey = prevConnectedClusters.inverseBidiMap().get(replaced);
+				
+				//I want to set (preExistingReplacedKey -> replacement) as a pair [but can only do this if they meet certain conditions].
+				if(valid) {
+					//It's possible that replacement already had a different key [another conflict would arise].
+					if (prevConnectedClusters.inverseBidiMap().containsKey(replacement)) {
+						Cluster preExistingReplacementKey = prevConnectedClusters.inverseBidiMap.get(replacement);
+						//then we will need to backPropagate further.
+						//Only one of [(preExistingReplacedKey -> replacement) & (preExistingReplacementKey -> replacement)] can be used.
+						Float replacedKeyDiff = compareClusters(preExistingReplacedKey, replacement);
+						Float replacementKeyDiff = compareClusters(preExistingReplacementKey, replacement);
+						
+						if (replacedKeyDiff > replacementKeyDiff) {
+							//replacedKeyDiff is the best match for replacement.
+							//need to modify the prevConnectedClusters to reflect this, then propagate it back.
+							//prevConnectedClusters started with (preExistingReplacementKey -> replacement), 
+							//now needs to have (preExistingReplacedKey -> replacement), 
+							//and any occurences of 'preExistingReplacementKey' in the prevPrevConnectedClusters would need to be changed.
+							prevConnectedClusters.remove(preExistingReplacementKey);
+							prevConnectedClusters.put(preExistingReplacedKey, replacement);
+							prepareToBackPropagate(replacementKeyDiff, replacedKeyDiff);
+						}
+						else {
+							//replacementKeyDiff is still the best match for replacement.
+							//so no immediate changes to make here.
+							//need to backPropagate in case some (F->preExistingReplacedKey) exists that might need to be updated to:
+							//(F->preExistingReplacementKey)  [[in order to keep that chain going]].
+							prepareToBackPropagate(replacedKeyDiff, replacementKeyDiff);
+						}
+					}
+					else {
+						//if not, then we can end this chain of changes here.
+						//replace (preExistingReplacedKey -> replaced) with (preExistingReplacedKey -> replacement)
+						prevConnectedClusters.put(preExistingReplacedKey, replacement);
+					}
+					
+				}
+				else {
+					//if preExistingReplacedKey can't link to replacement, then 
+				}
+			}
+			else {
+				//there is nothing to be done.
+			}
+		}
+		backPropagate(startSlice-1);
 	}
 	
 	public void backPropagate(int startSlice) {
 		
 		//clear the stuff from prepareToBackPropagate so those data structures can be reused for next backPropagation
 		//need to check if there is anything to actually backPropagate.. or if startSlice = 0 or smth.
+
+		if (this.replacements.size() == 0 || startSlice == 0) {
+			System.out.println("backPropagate finished -- " + this.replacements.size() == 0 + ", " + startSlice == 0);
+			return;
+		}
+		
+		//HashMap<Cluster, Cluster> nextReplacements = new HashMap<Cluster, Cluster>();
 		
 		DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(startSlice);
-		for (each pair) {
-			if (connectedClusters.inverseBidiMap().containsKey(thingToReplace)) {
-				Cluster actualKey = connectedCluster.inverseBidimap().get(thingToReplace);
-				connectedCluster.inverseBidiMap().remove(thingToReplace);
+		for (Cluster replaced: this.replacements.keySet()) {
+			Cluster replacement = this.replacements.get(replaced);
+			
+			//what if A replaces C but D replaces A? This while loop will get C replaced by D.
+			while (this.replacements.containsKey(replacement)) {
+				replacement = this.replacements.get(replacement);
+			}
+			
+			//if A has replaced C, we need to check if the replaced (C) is a value in the prev connectedClusters map.
+			if (connectedClusters.inverseBidiMap().containsKey(replaced)) {
+				Cluster keyForReplaced = connectedCluster.inverseBidimap().get(replaced);
+				connectedCluster.inverseBidiMap().remove(replaced);
 				
-				connectedCluster.inverseBidiMap().put(replacer, actualKey);
+				if (keyForReplaced and replacement are similar enough) {
+					//(keyForReplaced -> replaced) will be replaced by (keyForReplaced -> replacement)
+					//BUT: what if (preExistingKey -> replacement) already exists?
+					DualHashBidiMap<Cluster, Cluster> prevConnectedClusters = pairedClustersBySlice.get(startSlice-1);
+					
+					if (prevConnectedClusters.containsValue(replacement)) {
+						Cluster preExistingKey = prevConnectedClusters.inverseBidiMap().get(replacement);
+						//work out which is the best of preExistingKey and keyForReplaced -- and put this in prepareToBackPropagate.
+						Float keyForReplacedDiff = compareClusters(keyForReplaced, replacement);
+						Float preExistingKeyDiff = compareClusters(preExistingKey, replacement);
+						
+						if (preExistingKeyDiff < keyForReplacedDiff) {
+							//the 'keyForReplaced' (from keyForReplaced -> replaced) is the best match for replacement.
+							//remove the old 
+							//remove the old association, add the new association, and prepare the 'back-propagation' of this change.
+							connectedClusters.remove(otherC1);
+							connectedClusters.put(c1, bestCluster);
+							prepareToBackPropagate(c1, otherC1);
+						}
+						else {
+							//preExistingKey is the best match for replacement.
+							//prevConnectedClusters contains (preExistingKey -> replacement) already.
+							//
+							prepareToBackPropagate(otherC1, c1);
+						}
+					}
+					else {
+						//can just add the (keyForReplaced -> replacement) mapping.
+						connectedCluster.inverseBidiMap().put(replacement, keyForReplaced);
+					}
+				}
 				
-				if (pairedClustersBySlice.get(startSlice-1).containsValue(thingToReplace)) {
-					prepareToBackPropagate(thingToReplace, 
+
+				if (pairedClustersBySlice.get(startSlice-1).containsValue(replaced)) {
+					prepareToBackPropagate(replaced, 
 				
 	}
 		
