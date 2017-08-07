@@ -63,7 +63,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		for (int i = 1; i <= stack.getSize(); i++) {
 			System.out.println("Run on Slice: " + i);
 			ImageProcessor nextSlice = stack.getProcessor(i);
-			convertTo4Bit(nextSlice);
+			convertToBins(nextSlice);
 			connectivityAnalysis(nextSlice);
 			sliceClusterMap.put(i, largeClusters);
 		}
@@ -144,7 +144,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
 				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
 				
-				System.out.println("Clusters1 size: " + clusters1.size());
+				//System.out.println("Clusters1 size: " + clusters1.size());
 				for (Cluster c1: clusters1) {
 					float minDifference = -1;
 					Cluster bestCluster = null;
@@ -440,7 +440,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	//Then I can get to visualising the results.
 	public void findChainedClusters() {
 		
-		System.out.println("begin findChainedClusters()");
+		/*System.out.println("begin findChainedClusters()");
 		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
 			DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
 			ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
@@ -452,11 +452,12 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			}
 		}
 		System.out.println("finished findChainedClusters");
+		*/
 		
-		/*HashMap<Integer, Integer> clusterLengths = new HashMap<Integer, Integer>();
+		HashMap<Integer, Integer> clusterLengths = new HashMap<Integer, Integer>();
 		int stackSize = this.image.getStackSize();
-		for (int i = 1; i <= stackSize - minClusterChainLength; i++) {
-			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(i);
+		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
+			DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
 			
 			for (Cluster firstKey: connectedClusters.keySet()) {
 				Cluster key = firstKey;
@@ -472,17 +473,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					length++;
 				}
 				while(key != null);
-				if (length > minClusterChainLength) {
-					//System.out.println("Cluster " + firstKey + " had a chainLength of " + length);
-				}
 				if (clusterLengths.containsKey(length)) {
 					clusterLengths.put(length, clusterLengths.get(length) + 1);
 				}
 				else {
 					clusterLengths.put(length, 1);
 				}
-				if (length > minClusterChainLength) {
-					System.out.println(firstKey + " has a length of at least " + length);
+				if (length > Color_Segmenter.minClusterChainLength) {
+					System.out.println("Chain from sliceNumber: " + sliceNumber + " has a length of at least " + length);
 					ArrayList<Cluster> toBeDisplayed = new ArrayList<Cluster>();
 					key = firstKey;
 					do {
@@ -499,7 +497,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			}
 		}
 		
-		System.out.println("Cluster lengths: " + clusterLengths);*/
+		System.out.println("Cluster lengths: " + clusterLengths);
 	}
 
 	public void highlight(ArrayList<Cluster> clusters) {
@@ -584,14 +582,14 @@ class ObjectFinder implements Runnable {
 		for (sliceNumber = start; sliceNumber <= end; sliceNumber++) {
 			System.out.println("Run on Slice: " + sliceNumber);
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
-			convertTo4Bit(nextSlice);
+			convertToBins(nextSlice);
 			connectivityAnalysis(nextSlice);
 			//cs.sliceClusterMap.put(sliceNumber, largeClusters);
 		}
 		findChains();
 	}
 	
-	public void convertTo4Bit(ImageProcessor ip) {
+	public void convertToBins(ImageProcessor ip) {
 		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
 		ip.applyTable(Color_Segmenter.lut);
 	}
@@ -870,13 +868,13 @@ class ObjectFinder implements Runnable {
 		for (sliceNumber = start; sliceNumber <= end; sliceNumber++) {
 			System.out.println("Run on Slice: " + sliceNumber);
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
-			convertTo4Bit(nextSlice);
+			convertToBins(nextSlice);
 			connectivityAnalysis(nextSlice);
 			cs.sliceClusterMap.put(sliceNumber, largeClusters);
 		}
 	}
 	
-	public void convertTo4Bit(ImageProcessor ip) {
+	public void convertToBins(ImageProcessor ip) {
 		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
 		ip.applyTable(Color_Segmenter.lut);
 	}
