@@ -185,17 +185,17 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						//There is some cluster c2 that fits the criteria for c1 to match with c2.
 						
 						if (connectedClusters.containsValue(bestCluster)) {
-							System.out.println("Ok - there is a duplicate mapping to bestCluster!");
+							//System.out.println("Ok - there is a duplicate mapping to bestCluster!");
 							//then some other cluster also mapped to best cluster. This can't be allowed.
-							System.out.println("bestCluster is " + bestCluster);
-							System.out.println("c1 is " + c1);
+							//System.out.println("bestCluster is " + bestCluster);
+							//System.out.println("c1 is " + c1);
 							Cluster otherC1 = connectedClusters.getKey(bestCluster);
-							System.out.println("otherc1 is " + otherC1);
+							//System.out.println("otherc1 is " + otherC1);
 							Float c1DiffBest = minDifference;
 							Float otherC1DiffBest = compareClusters(otherC1, bestCluster);
-							System.out.println("c1; otherc1 - " + c1DiffBest + "; " + otherC1DiffBest);
+							//System.out.println("c1; otherc1 - " + c1DiffBest + "; " + otherC1DiffBest);
 							if (c1DiffBest < otherC1DiffBest) {
-								System.out.println("c1 better!");
+								//System.out.println("c1 better!");
 								//c1 is the best match for bestCluster --
 								//remove the old association, add the new association, and prepare the 'back-propagation' of this change.
 								connectedClusters.remove(otherC1);
@@ -203,7 +203,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								prepareToBackPropagate(c1, otherC1);
 							}
 							else {
-								System.out.println("otherC1Best");
+								//System.out.println("otherC1Best");
 								//otherC1 is the best match for bestCluster.
 								prepareToBackPropagate(otherC1, c1);
 							}
@@ -233,10 +233,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	}
 	
 	public void backPropagate(int startSlice) {
-		System.out.println("Starting backPropagating on " + startSlice + " size of replacements: " + this.replacements.size());
+		//System.out.println("Starting backPropagating on " + startSlice + " size of replacements: " + this.replacements.size());
 		//if there si nothing to backPropagate, then does nothing.
 		if (this.replacements == null) {
-			System.out.println("replacements was null - failed");
+			System.out.println("replacements was null on slice " + startSlice);
+			return;
 		}
 		if (this.replacements.size() == 0) {
 			System.out.println("Finished back propagating -- nothing to propagate back");
@@ -252,35 +253,35 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 		
 		//otherwise
-		System.out.println("Got through those initial checks");
+		//System.out.println("Got through those initial checks");
 		DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(startSlice);
 		DualHashBidiMap<Cluster, Cluster> prevConnectedClusters = pairedClustersBySlice.get(startSlice - 1);
 		
 		HashMap<Cluster, Cluster> replacements = new HashMap<Cluster, Cluster>(this.replacements);
 		this.replacements = null;
 		Iterator<Cluster> it = replacements.keySet().iterator();
-		System.out.println("About to begin while loop");
+		//System.out.println("About to begin while loop");
 		while(it.hasNext()) {
 			Cluster replaced = it.next();
-			System.out.println("Replaced: " + replaced);
+			//System.out.println("Replaced: " + replaced);
 			
 			Cluster replacement = replacements.get(replaced);
 			
-			System.out.println("Replacement: " + replacement);
+			//System.out.println("Replacement: " + replacement);
 			
-			System.out.println(replaced == replacement);
+			//System.out.println(replaced == replacement);
 			
 			//what if A replaces C, but D then replaces A? 
-			System.out.println("replacement: " + replacement);
+			//System.out.println("replacement: " + replacement);
 			while (replacements.containsKey(replacement)) {
 				replacement = replacements.get(replacement);
-				System.out.println("replacement: " + replacement);
+				//System.out.println("replacement: " + replacement);
 				//System.out.println(replacements);
-				try {
-					Thread.sleep(1000);
-				} catch (Exception e) {}
+				//try {
+				//	Thread.sleep(1000);
+				//} catch (Exception e) {}
 			}
-			System.out.println("Outside second while loop");
+			//System.out.println("Outside second while loop");
 			//TODO fix the iterator (to remove items).
 			
 			
@@ -288,15 +289,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			//('preExistingReplacedKey'->'replaced') exists in the prevConnectedClusters.
 			if (prevConnectedClusters.containsValue(replaced)) {
 				
-				System.out.println("A - true");
+				//System.out.println("A - true");
 				Cluster preExistingReplacedKey = prevConnectedClusters.getKey(replaced);
 				
 				//I want to set (preExistingReplacedKey -> replacement) as a pair [but can only do this if they meet certain conditions].
 				if(canCompareClusters(preExistingReplacedKey, replacement)) {
-					System.out.println("B - true");
+					//System.out.println("B - true");
 					//It's possible that replacement already had a different key [another conflict would arise].
 					if (prevConnectedClusters.containsValue(replacement)) {
-						System.out.println("C - true");
+						//System.out.println("C - true");
 						Cluster preExistingReplacementKey = prevConnectedClusters.getKey(replacement);
 						//then we will need to backPropagate further.
 						//Only one of [(preExistingReplacedKey -> replacement) & (preExistingReplacementKey -> replacement)] can be used.
@@ -304,7 +305,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						Float replacementKeyDiff = compareClusters(preExistingReplacementKey, replacement);
 						
 						if (replacedKeyDiff < replacementKeyDiff) {
-							System.out.println("D - true");
+							//System.out.println("D - true");
 							//replacedKeyDiff is the best match for replacement.
 							//need to modify the prevConnectedClusters to reflect this, then propagate it back.
 							//prevConnectedClusters started with (preExistingReplacementKey -> replacement), 
@@ -315,7 +316,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 							prepareToBackPropagate(preExistingReplacedKey, preExistingReplacementKey);
 						}
 						else {
-							System.out.println("D - false");
+							//System.out.println("D - false");
 							//replacementKeyDiff is still the best match for replacement.
 							//so no immediate changes to make here.
 							//need to backPropagate in case some (F->preExistingReplacedKey) exists that might need to be updated to:
@@ -324,7 +325,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						}
 					}
 					else {
-						System.out.println("C - false");
+						//System.out.println("C - false");
 						//if not, then we can end this chain of changes here.
 						//replace (preExistingReplacedKey -> replaced) with (preExistingReplacedKey -> replacement)
 						prevConnectedClusters.put(preExistingReplacedKey, replacement);
@@ -332,14 +333,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					
 				}
 				else {
-					System.out.println("B - false");
+					//System.out.println("B - false");
 					//if preExistingReplacedKey can't link to replacement, then nothing need be changed/
 					//(preExistingReplacedKey -> replaced) will remain in prevConnectedClusters.
 				}
 			}
 			
 			else {
-				System.out.println("A - false");
+				//System.out.println("A - false");
 				//there is nothing to be done.
 			}
 		}
@@ -645,19 +646,19 @@ class ObjectFinder implements Runnable {
 						largeClusters++;
 						ArrayList<Cluster> clusterList = clusterValue_clusters_MAP.get(currentCluster.value);
 						
-						if (sliceNumber == 1 && currentCluster.value == 10) {
-							currentCluster.postProcessing();
-							if (clusterList.contains(currentCluster)) {
-								System.out.println("not a new cluster!!: " + currentCluster);
-								clusterList.add(currentCluster);
-							} else {
-								System.out.println("NEW CLUSTER:" + currentCluster);
-								clusterList.add(currentCluster);
-							}
-						}
-						else {
-							clusterList.add(currentCluster);
-						}
+						//if (sliceNumber == 1 && currentCluster.value == 10) {
+						//	currentCluster.postProcessing();
+						//	if (clusterList.contains(currentCluster)) {
+						//		System.out.println("not a new cluster!!: " + currentCluster);
+						//		clusterList.add(currentCluster);
+						//	} else {
+						//		System.out.println("NEW CLUSTER:" + currentCluster);
+						//		clusterList.add(currentCluster);
+						//	}
+						//}
+						//else {
+						//	clusterList.add(currentCluster);
+						//}
 
 						clusterValue_clusters_MAP.put(currentCluster.value, clusterList);
 					}
@@ -677,10 +678,10 @@ class ObjectFinder implements Runnable {
 				}
 				fromSameCluster = false;
 				currentCluster = new Cluster(nextPoint, sliceNumber);
-				if (sliceNumber == 1 && nextPoint.value == 10 && nextPoint == points[20][7]) {
-					System.out.println("Point 20, 7 starting a new cluster...");
-					System.out.println(fromSameCluster);
-				}
+				//if (sliceNumber == 1 && nextPoint.value == 10 && nextPoint == points[20][7]) {
+				//	System.out.println("Point 20, 7 starting a new cluster...");
+				//	System.out.println(fromSameCluster);
+				//}
 				
 			}
 			
@@ -720,22 +721,26 @@ class ObjectFinder implements Runnable {
 			}
 		}
 		
-		if (sliceNumber == 1) {
-			Integer value = 10;
-			
-			System.out.println("At value " + value);
-			System.out.println(clusterValue_clusters_MAP.get(value));
-			System.out.println("List size is " + clusterValue_clusters_MAP.get(value).size());
-			System.out.println("Set size is " + (new HashSet(clusterValue_clusters_MAP.get(value)).size()));
-			
-			for (int i = 0; i < 10; i++) {
-				System.out.println();
-			}
+		//if (sliceNumber == 1) {
+		//	Integer value = 10;
+		//	
+		//	System.out.println("At value " + value);
+		//	System.out.println(clusterValue_clusters_MAP.get(value));
+		//	System.out.println("List size is " + clusterValue_clusters_MAP.get(value).size());
+		//	System.out.println("Set size is " + (new HashSet(clusterValue_clusters_MAP.get(value)).size()));
+		//	
+		//	for (int i = 0; i < 10; i++) {
+		//		System.out.println();
+		//	}
+		//	
+		//	try {
+		//		Thread.sleep(180000);
+		//	} catch (Exception e) {}
+		//
+		//}
 		
-			try {
-				Thread.sleep(180000);
-			} catch (Exception e) {}
-		}
+		
+		
 		//String output = "";
 		//for (Integer value : clusterValue_clusters_MAP.keySet()) {
 			//ArrayList<Cluster> clustersListNoDupes = new ArrayList<Cluster>(new HashSet<Cluster>(clusterValue_clusters_MAP.get(value)));
