@@ -26,6 +26,7 @@ import java.util.*;
 
 public class Analyse_Cluster extends SegmentationPlugin {
 	
+	int clusterValue;
 	
 	public void run(ImageProcessor ip) {
 
@@ -53,7 +54,7 @@ public class Analyse_Cluster extends SegmentationPlugin {
 		for (Pixel p: cluster) {
 			pixels[p.y*this.X + p.x] = (byte) whiteColour;
 		}
-		(new ImagePlus("cluster", ipCopy)).show();
+		(new ImagePlus("cluster at value: " + clusterValue + " + on slice " + ip.getSliceNumber(), ipCopy)).show();
 	}
 	
 	public ArrayList<Pixel> connectToCluster(ImageProcessor ip, int x, int y) {
@@ -85,7 +86,7 @@ public class Analyse_Cluster extends SegmentationPlugin {
 		
 		//Pixel nextPixel = points[x][y];
 		Pixel nextPixel;
-		int clusterValue = points[x][y].value;
+		clusterValue = points[x][y].value;
 		System.out.println("clusterValue is " + clusterValue + ", x and y are " + x + ", " + y);
 		do {
 			nextPixel = toCheck.get(0);
@@ -93,9 +94,9 @@ public class Analyse_Cluster extends SegmentationPlugin {
 			if (thisCluster.contains(nextPixel)) {
 				continue;
 			}
-			System.out.println("Considering " + nextPixel);
+			//System.out.println("Considering " + nextPixel);
 			if (Math.abs(nextPixel.value - clusterValue) <= COLOUR_DIFFERENCE_ALLOWED) {
-				System.out.println("Accepted.");
+				//System.out.println("Accepted.");
 				thisCluster.add(nextPixel);
 		
 				if (nextPixel.x - 1 >= xMin) {
@@ -115,7 +116,7 @@ public class Analyse_Cluster extends SegmentationPlugin {
 				}
 			}
 			else {
-				System.out.println("Rejected.");
+				//System.out.println("Rejected.");
 			}
 		}
 		while (toCheck.size() != 0);
