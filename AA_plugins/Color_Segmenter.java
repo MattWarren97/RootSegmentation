@@ -151,27 +151,30 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								nextClusterValue <= clusterValue + maximumColourDifference; 
 										nextClusterValue++) 
 					{
+						//if this nextClusterValue selected is either too high or too low to match with cluster1..., then continue.
 						if (nextClusterValue < ObjectFinder.rootLowerBound+ObjectFinder.clusterDeviation ||
 									nextClusterValue > ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation)
 						{
 							//System.out.println("No clusters at value " + nextClusterValue + " - continuing");
 							continue;
 						}
-						//System.out.println("HERE - where that NULLPOINTER was!!!");
+						
 						ArrayList<Cluster> clusters2 = next_clusterValue_clusters_MAP.get(nextClusterValue);
-						//System.out.println("Just starting out here, nextClusterValue will be " + nextClusterValue);
-						//System.out.println(next_clusterValue_clusters_MAP);
 						if (clusters2.isEmpty()) {
 							System.out.println(sliceNumber + ", " + nextClusterValue + " has empty clusters2");
 						}
+						//System.out.println("clusters2 List length is " + clusters2.size());
+						//Set clusters2Set = new HashSet(clusters2);
+						//System.out.println("clusters2 set length is " + clusters2Set.size());
+					
 						for (Cluster c2 : clusters2) {
 							Float difference = compareClusters(c1, c2);
 							if (difference == null) {
 								//clusters are too far apart to attempt joining...
 								continue;
 							}
-							
 							if (difference < minDifference || minDifference == -1) {
+								//either no cluster has yet set a difference 'mark', or some other cluster has and this c2 bettered it.
 								minDifference = difference;
 								bestCluster = c2;
 							}
@@ -179,13 +182,20 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					}
 					
 					if (minDifference != -1) {
+						//There is some cluster c2 that fits the criteria for c1 to match with c2.
 						
 						if (connectedClusters.containsValue(bestCluster)) {
+							System.out.println("Ok - there is a duplicate mapping to bestCluster!");
 							//then some other cluster also mapped to best cluster. This can't be allowed.
+							System.out.println("bestCluster is " + bestCluster);
+							System.out.println("c1 is " + c1);
 							Cluster otherC1 = connectedClusters.getKey(bestCluster);
+							System.out.println("otherc1 is " + otherC1);
 							Float c1DiffBest = minDifference;
 							Float otherC1DiffBest = compareClusters(otherC1, bestCluster);
+							System.out.println("c1; otherc1 - " + c1DiffBest + "; " + otherC1DiffBest);
 							if (c1DiffBest < otherC1DiffBest) {
+								System.out.println("c1 better!");
 								//c1 is the best match for bestCluster --
 								//remove the old association, add the new association, and prepare the 'back-propagation' of this change.
 								connectedClusters.remove(otherC1);
@@ -193,9 +203,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								prepareToBackPropagate(c1, otherC1);
 							}
 							else {
+								System.out.println("otherC1Best");
 								//otherC1 is the best match for bestCluster.
 								prepareToBackPropagate(otherC1, c1);
 							}
+
 						}
 						else {
 							//simple case
@@ -251,6 +263,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		while(it.hasNext()) {
 			Cluster replaced = it.next();
 			System.out.println("Replaced: " + replaced);
+			
 			Cluster replacement = replacements.get(replaced);
 			
 			System.out.println("Replacement: " + replacement);
@@ -258,8 +271,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			System.out.println(replaced == replacement);
 			
 			//what if A replaces C, but D then replaces A? 
+			System.out.println("replacement: " + replacement);
 			while (replacements.containsKey(replacement)) {
 				replacement = replacements.get(replacement);
+				System.out.println("replacement: " + replacement);
+				//System.out.println(replacements);
+				try {
+					Thread.sleep(1000);
+				} catch (Exception e) {}
 			}
 			System.out.println("Outside second while loop");
 			//TODO fix the iterator (to remove items).
@@ -626,12 +645,20 @@ class ObjectFinder implements Runnable {
 						largeClusters++;
 						ArrayList<Cluster> clusterList = clusterValue_clusters_MAP.get(currentCluster.value);
 						
-						try {
-							clusterList.add(currentCluster);
-						} catch (Exception e) {
-							System.out.println("Value at failure: ");
-							System.out.println(currentCluster.value);
+						if (sliceNumber == 1 && currentCluster.value == 10) {
+							currentCluster.postProcessing();
+							if (clusterList.contains(currentCluster)) {
+								System.out.println("not a new cluster!!: " + currentCluster);
+								clusterList.add(currentCluster);
+							} else {
+								System.out.println("NEW CLUSTER:" + currentCluster);
+								clusterList.add(currentCluster);
+							}
 						}
+						else {
+							clusterList.add(currentCluster);
+						}
+
 						clusterValue_clusters_MAP.put(currentCluster.value, clusterList);
 					}
 					
@@ -639,6 +666,8 @@ class ObjectFinder implements Runnable {
 						// to allow these points to be added to other clusters too.
 						p.accountedForInSameCluster = false;
 					}
+					
+					currentCluster = null;
 				}
 				
 				nextPoint = newClusterToBeProcessed.get(0);
@@ -648,11 +677,11 @@ class ObjectFinder implements Runnable {
 				}
 				fromSameCluster = false;
 				currentCluster = new Cluster(nextPoint, sliceNumber);
+				if (sliceNumber == 1 && nextPoint.value == 10 && nextPoint == points[20][7]) {
+					System.out.println("Point 20, 7 starting a new cluster...");
+					System.out.println(fromSameCluster);
+				}
 				
-			}
-
-			if (count %10000 == 0) {
-				//System.out.println("count: " + count + ", " + nextPoint + ", val: " + nextPoint.value + ", hasCl: " + nextPoint.hasCluster + ", accNew: " + nextPoint.accountedForInNewCluster + ", accSame: " + nextPoint.accountedForInSameCluster + ", considered: " + nextPoint.considered + ", addedNew: " + nextPoint.addedToNewClusterList + ", addedSame: " + nextPoint.addedToSameClusterList + ", fromSame: " + fromSameCluster + ", sameSize: " + sameClusterToBeProcessed.size() + ", newSize: " + newClusterToBeProcessed.size());
 			}
 			
 			if (nextPoint.x - 1 >= xMin) {
@@ -690,6 +719,33 @@ class ObjectFinder implements Runnable {
 				c.postProcessing();
 			}
 		}
+		
+		if (sliceNumber == 1) {
+			Integer value = 10;
+			
+			System.out.println("At value " + value);
+			System.out.println(clusterValue_clusters_MAP.get(value));
+			System.out.println("List size is " + clusterValue_clusters_MAP.get(value).size());
+			System.out.println("Set size is " + (new HashSet(clusterValue_clusters_MAP.get(value)).size()));
+			
+			for (int i = 0; i < 10; i++) {
+				System.out.println();
+			}
+		
+			try {
+				Thread.sleep(180000);
+			} catch (Exception e) {}
+		}
+		//String output = "";
+		//for (Integer value : clusterValue_clusters_MAP.keySet()) {
+			//ArrayList<Cluster> clustersListNoDupes = new ArrayList<Cluster>(new HashSet<Cluster>(clusterValue_clusters_MAP.get(value)));
+			//clusterValue_clusters_MAP.put(value, clustersListNoDupes);
+			//output += clusterValue_clusters_MAP.get(value).size() + " - ";
+			//output += (new HashSet(clusterValue_clusters_MAP.get(value)).size()) + ", ";
+		//}
+		
+		//System.out.println("for sliceNumber " + sliceNumber + ": " + output);
+		
 		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
 		/*for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
 					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
