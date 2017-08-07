@@ -144,6 +144,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
 				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
 				
+				System.out.println("Clusters1 size: " + clusters1.size());
 				for (Cluster c1: clusters1) {
 					float minDifference = -1;
 					Cluster bestCluster = null;
@@ -444,8 +445,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
 			ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
 			Set<Cluster> valuesSet = new HashSet<Cluster>(connectedClusters.values());
-			//System.out.println("valuesList " + valuesList.size());
-			//System.out.println("valuesSet " + valuesSet.size());
+			System.out.println("valuesList " + valuesList.size());
+			System.out.println("valuesSet " + valuesSet.size());
 			if (valuesList.size() != valuesSet.size()) {
 				System.out.println("On slice " + sliceNumber + ", valuesList: " + valuesList.size() + ", valuesSet: " + valuesSet.size());
 			}
@@ -659,6 +660,7 @@ class ObjectFinder implements Runnable {
 						//else {
 						//	clusterList.add(currentCluster);
 						//}
+						clusterList.add(currentCluster);
 
 						clusterValue_clusters_MAP.put(currentCluster.value, clusterList);
 					}
