@@ -28,6 +28,10 @@ public class Analyse_Cluster extends SegmentationPlugin {
 	
 	int clusterValue;
 	
+	float aspectRatio = 0;
+	float[] center;
+	int area;
+	
 	public void run(ImageProcessor ip) {
 
 		ImageProcessor ipCopy = (ImageProcessor) ip.clone();
@@ -54,7 +58,7 @@ public class Analyse_Cluster extends SegmentationPlugin {
 		for (Pixel p: cluster) {
 			pixels[p.y*this.X + p.x] = (byte) whiteColour;
 		}
-		(new ImagePlus("cluster at value: " + clusterValue + " + on slice " + ip.getSliceNumber(), ipCopy)).show();
+	(new ImagePlus("clusterVal: " + clusterValue + ", slice: " + this.image.getCurrentSlice() + " area: " + area + ", aspect: " + aspectRatio + "center: (" + ((int) center[0]) + "," + ((int) center[1]) + ")", ipCopy)).show();
 	}
 	
 	public ArrayList<Pixel> connectToCluster(ImageProcessor ip, int x, int y) {
@@ -122,10 +126,50 @@ public class Analyse_Cluster extends SegmentationPlugin {
 		while (toCheck.size() != 0);
 		
 		System.out.println("Cluster size is " + thisCluster.size());
+		aspectRatio = getAspectRatio(thisCluster);
+		area = thisCluster.size();
+		center = getCenter(thisCluster);
+		
 		return thisCluster;
 	}
 	
-		
+	public float getAspectRatio(ArrayList<Pixel> points) {
+		int[] aspectRatio = new int[2];
+		Pixel initial = points.get(0);
+		int minX = initial.x, minY = initial.y, maxX = initial.x, maxY = initial.y;
+		for (Pixel p: points) {
+			if (p.x < minX) {
+				minX = p.x;
+			}
+			else if (p.x > maxX) {
+				maxX = p.x;
+			}
+			if (p.y < minY) { 
+				minY = p.y;
+			}
+			else if (p.y > maxY) {
+				maxY = p.y;
+			}
+		}
+
+		aspectRatio[0] = maxX - minX;
+		aspectRatio[1] = maxY - minY;
+		return (float)aspectRatio[0]/(float)aspectRatio[1];
+	}
+	
+	public float[] getCenter(ArrayList<Pixel> points) {
+		float[] center = new float[2];
+		int xSum = 0, ySum = 0;
+		int size = points.size();
+		for (Pixel p : points) {
+			xSum += p.x;
+			ySum += p.y;
+		}
+		center[0] = (float) xSum/(float)size;
+		center[1] = (float) ySum/(float)size;
+
+		return center;
+	}
 		
 		
 }
