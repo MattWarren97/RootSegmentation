@@ -146,6 +146,17 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				
 				//System.out.println("Clusters1 size: " + clusters1.size());
 				for (Cluster c1: clusters1) {
+					boolean isInteresting = false;
+					if (sliceNumber >= 33 && sliceNumber < 53) {
+						if (c1.center[0] >= 210 && c1.center[0] < 240) {
+							if (c1.center[1] >= 265 && c1.center[1] < 295) {
+								if (c1.value >= 16 && c1.value < 24) {
+									isInteresting = true;
+									System.out.println("Potential cluster - " + c1);
+								}
+							}
+						}
+					}
 					float minDifference = -1;
 					Cluster bestCluster = null;
 					for (int nextClusterValue = clusterValue - maximumColourDifference; 
@@ -201,6 +212,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								//remove the old association, add the new association, and prepare the 'back-propagation' of this change.
 								connectedClusters.remove(otherC1);
 								connectedClusters.put(c1, bestCluster);
+								if (isInteresting) {
+									System.out.println("Matched with " + bestCluster);
+
+								}
 								prepareToBackPropagate(c1, otherC1);
 							}
 							else {
@@ -212,6 +227,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						}
 						else {
 							//simple case
+							if (isInteresting) {
+								System.out.println("Matched with " + bestCluster);
+							}
 							connectedClusters.put(c1, bestCluster);
 						}
 					}
@@ -710,7 +728,7 @@ class ObjectFinder implements Runnable {
 			
 		}
 
-		System.out.println("finished while loop on start: " + this.start);
+		//System.out.println("finished while loop on start: " + this.start);
 		
 		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
 					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
@@ -1066,7 +1084,7 @@ class Cluster {
 
 	public String toString() {
 		//this.calculateValues();
-		String toReturn = "Cluster starting at " + points.get(0) + ","+this.z + " - ";
+		String toReturn = "Cluster center at (" + ((int) this.center[0]) + "," + ((int) this.center[1]) + "," + this.z + ") - ";
 		toReturn = toReturn + " with Area: " + area;
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
 		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
