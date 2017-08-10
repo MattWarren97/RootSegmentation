@@ -133,7 +133,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		DualHashBidiMap<Cluster, Cluster> connectedClusters;
 		System.out.println("started findConnectedClusters");
 		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
-			System.out.println("Started connecting clusters on " + sliceNumber);
+			//System.out.println("Started connecting clusters on " + sliceNumber);
 			connectedClusters = new DualHashBidiMap<Cluster, Cluster>();
 			
 			for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
@@ -255,7 +255,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		//System.out.println("Starting backPropagating on " + startSlice + " size of replacements: " + this.replacements.size());
 		//if there si nothing to backPropagate, then does nothing.
 		if (this.replacements == null) {
-			System.out.println("replacements was null on slice " + startSlice);
+			//System.out.println("replacements was null on slice " + startSlice);
 			return;
 		}
 		if (this.replacements.size() == 0) {
@@ -498,7 +498,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 					clusterLengths.put(length, 1);
 				}
 				if (length > Color_Segmenter.minClusterChainLength) {
-					System.out.println("Chain from sliceNumber: " + sliceNumber + " has a length of at least " + length);
+					//System.out.println("Chain from sliceNumber: " + sliceNumber + " has a length of at least " + length);
 					ArrayList<Cluster> toBeDisplayed = new ArrayList<Cluster>();
 					key = firstKey;
 					do {
@@ -579,6 +579,8 @@ class ObjectFinder implements Runnable {
 	HashMap<Integer, ArrayList<Cluster>>  clusterValue_clusters_MAP;
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
 	Point[][] points;
+	ArrayList<Point> pointsAtValue;
+	HashSet<Point> processed;
 	
 	int sliceNumber;
 	
@@ -612,6 +614,144 @@ class ObjectFinder implements Runnable {
 		ip.applyTable(Color_Segmenter.lut);
 	}
 	
+	//an entirely different implementation...
+	public void connectivityAnalysis(ImageProcessor ip) {
+		int xMin = 0;
+		int yMin = 0;
+		int xMax = this.cs.X - 1;
+		int yMax = this.cs.Y - 1;
+		
+		points = new Point[this.cs.X][this.cs.Y];
+		for (int i = 0; i <= xMax; i++) {
+			for (int j = 0; j <= yMax; j++) {
+				points[i][j] = new Point(i, j, ip.get(i, j));
+			}
+		}
+		
+
+		clusterValue_clusters_MAP = new HashMap<Integer, ArrayList<Cluster>>();
+		ArrayList<Cluster> clustersAtValue;
+		
+		for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+					clusterValue <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; clusterValue++)
+		{
+			clustersAtValue = new ArrayList<Cluster>();
+			pointsAtValue = new ArrayList<Point>();
+			for (int i = 0; i <= xMax; i++) {
+				for (int j = 0; j <= yMax; j++) {
+					if (points[i][j].value == clusterValue) {
+						pointsAtValue.add(points[i][j]);
+					}
+				}
+			}
+			
+			System.out.println("pointsAtValue is set up with size" + pointsAtValue.size());
+			
+			while(pointsAtValue.size() != 0) {
+				Point nextPoint = pointsAtValue.remove(0);
+				Cluster currentCluster = new Cluster(nextPoint, sliceNumber);
+				sameClusterToBeProcessed = new ArrayList<Point>();
+				sameClusterToBeProcessed.add(nextPoint);
+				processed = new HashSet<Point>();
+				processed.add(nextPoint);
+				
+				while(!sameClusterToBeProcessed.isEmpty()) {
+					nextPoint = sameClusterToBeProcessed.remove(0); //the value at index 0 is returned while being removed.
+					if (nextPoint.x - 1 >= xMin) {
+						considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
+					}
+					
+					if (nextPoint.x + 1 <= xMax) {
+						considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster);
+					}
+					
+					if (nextPoint.y - 1 >= yMin) {
+						considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster);
+					}
+					
+					if (nextPoint.y + 1 <= yMax) {
+						considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster);
+					}
+					
+				}
+				//System.out.println("sameClusterToBeProcessed is empty!");
+				clustersAtValue.add(currentCluster);
+			}
+			
+			//at this stage all the clusters at this value have been performed.
+			//We know want to compute on these -- (Median, Dilate, Fill-holes, erode, watershed) to smooth out and join up close clusters.
+			int pointCount = 0;
+			for (Cluster c: clustersAtValue) {
+				pointCount += c.getArea();
+			}
+			int[] xPoints = new int[pointCount];
+			int[] yPoints = new int[pointCount];
+			
+			int pointIndex = 0;
+			for (Cluster c: clustersAtValue) {
+				for (Point p: c.points) {
+					xPoints[pointIndex] = p.x;
+					yPoints[pointIndex] = p.y;
+					pointIndex++;
+				}
+			}
+			//PolygonRoi initialClustersRoi = new PolygonRoi(xPoints, yPoints, pointCount, Roi.POLYGON);
+			int width = this.cs.X;
+			byte[] pixelsCopy = (byte[]) ip.getPixelsCopy();
+			byte whiteColour = (byte) 255;
+			byte blackColour = (byte) 0;
+			for (int i = 0; i < pointCount; i++) {
+				pixelsCopy[yPoints[i]*width + xPoints[i]] = whiteColour;
+			}
+			
+			int totalArea = this.cs.X * this.cs.Y;
+			for (int i = 0; i < totalArea; i++) {
+				if (pixelsCopy[i] != whiteColour) {
+					pixelsCopy[i] = blackColour;
+				}
+			}
+			
+			ImageProcessor processClusters = ip.duplicate();
+			processClusters.setPixels(pixelsCopy);
+			ImagePlus imp = new ImagePlus(processClusters);
+			
+			IJ.run(imp, "Median...", "2");
+			IJ.run(imp, "Invert", "");
+			IJ.run(imp, "Dilate", "");
+			IJ.run(imp, "Fill Holes", "");
+			IJ.run(imp, "Erode", "");
+			IJ.run(imp, "Watershed", "");
+
+			//System.out.println("Displaying for " + sliceNumber + ", value: " + clusterValue);
+			byte[] pixels = (byte[]) processClusters.getPixels();
+			
+		}
+			
+		
+	}
+	
+	public void considerPoint(int x, int y, Cluster c) {
+		Point newPoint = points[x][y];
+		if (processed.contains(newPoint)) {
+			return;
+		}
+		int valueDifference = Math.abs(newPoint.value - c.value);
+		if (valueDifference <= ObjectFinder.clusterDeviation) {
+			sameClusterToBeProcessed.add(newPoint);
+			if (valueDifference == 0) {
+				pointsAtValue.remove(newPoint);
+				c.addPoint(newPoint, true);
+			}
+			else {
+				c.addPoint(newPoint, false);
+			}
+		}
+		processed.add(newPoint);
+	}
+		
+			
+	
+	/*
 	public void connectivityAnalysis(ImageProcessor ip) {
 		
 		//System.out.println("Begin connectivityAnalysis on " + sliceNumber);
@@ -770,17 +910,18 @@ class ObjectFinder implements Runnable {
 		//System.out.println("for sliceNumber " + sliceNumber + ": " + output);
 		
 		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
-		/*for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
-		{
-			System.out.println(this.start + " - " + this.end + ": value " + i + ", :");
+		//for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
+		//			i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
+		//{
+		//	System.out.println(this.start + " - " + this.end + ": value " + i + ", :");
 
-			System.out.println(sliceNumber + ": " + i + ", " + clusterValue_clusters_MAP.get(i).size());
-			
-		}*/
+		//	System.out.println(sliceNumber + ": " + i + ", " + clusterValue_clusters_MAP.get(i).size());
+		//	
+		//}
 		//System.out.println("LargeClusters: " + largeClusters);
-	}
+	}*/
 	
+	/*
 	public void considerPoint(int x, int y, Cluster currentCluster, Point prevPoint) {
 		Point newPoint = points[x][y];
 		
@@ -815,10 +956,10 @@ class ObjectFinder implements Runnable {
 				addToNewClusterList(newPoint);
 			}
 		}
-		/*else {
-			if (!hasCluster)
-			currentCluster.addNeighbour(newPoint);
-		}*/
+		//else {
+		//	if (!hasCluster)
+		//	currentCluster.addNeighbour(newPoint);
+		//}
 			
 	}
 	public void addToSameClusterList(Point p) {
@@ -838,7 +979,7 @@ class ObjectFinder implements Runnable {
 			p.accountedForInNewCluster = true;
 			//System.out.println(p + " added to newClusterList");
 		}
-	}
+	}*/
 	
 	//not implemented at this stage (while still divided into multiple threads) yet.
 	public void findChains() {
@@ -1018,134 +1159,6 @@ class ObjectFinder implements Runnable {
 	}
 }*/
 
-class Point {
-	public int x;
-	public int y;
-	public int value;
-	public Cluster cluster;
-	public boolean hasCluster;
-	public boolean accountedForInSameCluster;
-	public boolean accountedForInNewCluster;
-
-	public Point (int x, int y, int v) {
-		this.x = x;
-		this.y = y;
-		this.setValue(v);
-		this.accountedForInSameCluster = false;
-		this.accountedForInNewCluster = false;
-	}
-
-	public void setValue(int v) {
-		this.value = v;
-	}
-
-	public void setCluster(Cluster c) {
-		this.cluster = c;
-		this.hasCluster = true;
-	}
-
-	public String toString() {
-		return "(" + this.x + ", " + this.y + ")";
-	}
-}
 
 
 
-class Cluster {
-	public ArrayList<Point> points;
-	public int value;
-	public int area;
-	public float aspectRatio;
-	public float[] center;
-	public int z;
-	public boolean calculatedValues;
-
-	public Cluster(Point p, int z) {
-		this.points = new ArrayList<Point>();
-		this.value = p.value;
-		this.addPoint(p, true);
-		this.z = z;
-		this.calculatedValues = false;
-	}
-
-	public void addPoint(Point p, boolean setPointCluster) {
-		if (!this.points.contains(p)) {
-			this.points.add(p);
-			//a point can be in multiple clusters -- but it only owns a cluster of the same value.
-			if (setPointCluster) {
-				p.setCluster(this);
-			}
-		}
-	}
-
-	public int getArea() {
-		return this.points.size();
-	}
-
-	public String toString() {
-		//this.calculateValues();
-		String toReturn = "Cluster center at (" + ((int) this.center[0]) + "," + ((int) this.center[1]) + "," + this.z + ") - ";
-		toReturn = toReturn + " with Area: " + area;
-		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
-		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
-		toReturn = toReturn + ", Value: " + value;
-		return toReturn+"\n";
-	}
-
-	public float getAspectRatio() {
-		int[] aspectRatio = new int[2];
-		Point initial = points.get(0);
-		int minX = initial.x, minY = initial.y, maxX = initial.x, maxY = initial.y;
-		for (Point p: points) {
-			if (p.x < minX) {
-				minX = p.x;
-			}
-			else if (p.x > maxX) {
-				maxX = p.x;
-			}
-			if (p.y < minY) { 
-				minY = p.y;
-			}
-			else if (p.y > maxY) {
-				maxY = p.y;
-			}
-		}
-
-		aspectRatio[0] = maxX - minX;
-		aspectRatio[1] = maxY - minY;
-		return (float)aspectRatio[0]/(float)aspectRatio[1];
-	}
-
-	public float[] getCenter() {
-		float[] center = new float[2];
-		int xSum = 0, ySum = 0;
-		int size = getArea();
-		for (Point p : points) {
-			xSum += p.x;
-			ySum += p.y;
-		}
-		center[0] = (float) xSum/(float)size;
-		center[1] = (float) ySum/(float)size;
-
-		return center;
-	}
-
-	public int getValue() {
-		return this.value;
-	}
-
-	public void postProcessing() {
-		calculateValues();
-	}
-
-	public void calculateValues() {
-		this.calculatedValues = true;
-		this.area = getArea();
-		this.aspectRatio = getAspectRatio();
-		this.center = getCenter();
-	}
-	
-	public int getSliceNumber() {
-		return this.z;
-	}
-}
