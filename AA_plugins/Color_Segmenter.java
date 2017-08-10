@@ -722,6 +722,10 @@ class ObjectFinder implements Runnable {
 			IJ.run(imp, "Erode", "");
 			IJ.run(imp, "Watershed", "");
 
+			//TODO: Find the code implementation of watershed -- see if it is possible to convert the resulting data structures into
+			//the new cluster list.
+			
+			
 			//System.out.println("Displaying for " + sliceNumber + ", value: " + clusterValue);
 			byte[] pixels = (byte[]) processClusters.getPixels();
 			
