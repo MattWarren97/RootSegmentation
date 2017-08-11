@@ -760,7 +760,8 @@ class ObjectFinder implements Runnable {
 	//not implemented at this stage (while still divided into multiple threads) yet.
 	public void findChains() {
 		
-		System.err.println("findChains is not implemented yet!!");
+		//System.err.println("findChains is not implemented yet!!");
+		System.err.println("Finished finding clusters from slices: " + start + "-" + end);
 	}
 		
 }
