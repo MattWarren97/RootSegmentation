@@ -573,6 +573,8 @@ class ObjectFinder implements Runnable {
 	static int rootUpperBound = 26; //so 11-12-13 is allowed.
 	static int clusterDeviation = 1;
 	int count;
+	int xMin, yMin, xMax, yMax;
+	int X,Y;
 	
 	ArrayList<Point> newClusterToBeProcessed;
 	ArrayList<Point> sameClusterToBeProcessed;
@@ -580,6 +582,7 @@ class ObjectFinder implements Runnable {
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
 	Point[][] points;
 	ArrayList<Point> pointsAtValue;
+	ArrayList<Cluster> clustersAtValue;
 	HashSet<Point> processed;
 	
 	int sliceNumber;
@@ -591,6 +594,13 @@ class ObjectFinder implements Runnable {
 		this.cs = cs;
 		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
 		this.count = 0;
+		int xMin = 0;
+		int yMin = 0;
+		int xMax = this.cs.X - 1;
+		int yMax = this.cs.Y - 1;
+		this.X = this.cs.X;
+		this.Y = this.cs.Y;
+
 	}
 	
 	public void run() {
@@ -614,106 +624,116 @@ class ObjectFinder implements Runnable {
 		ip.applyTable(Color_Segmenter.lut);
 	}
 	
-	//an entirely different implementation...
-	public void connectivityAnalysis(ImageProcessor ip) {
-		int xMin = 0;
-		int yMin = 0;
-		int xMax = this.cs.X - 1;
-		int yMax = this.cs.Y - 1;
+	public ImageProcessor highlightClusters(ImageProcessor ip, ArrayList<Cluster> clusters) {
+		int pointCount = 0;
+		for (Cluster c: clusters) {
+			pointCount += c.getArea();
+		}
+		int[] xPoints = new int[pointCount];
+		int[] yPoints = new int[pointCount];
 		
-		points = new Point[this.cs.X][this.cs.Y];
+		int pointIndex = 0;
+		for (Cluster c: clusters) {
+			for (Point p: c.points) {
+				xPoints[pointIndex] = p.x;
+				yPoints[pointIndex] = p.y;
+				pointIndex++;
+			}
+		}
+		//PolygonRoi initialClustersRoi = new PolygonRoi(xPoints, yPoints, pointCount, Roi.POLYGON);
+		int width = this.X;
+		byte[] pixelsCopy = (byte[]) ip.getPixelsCopy();
+		byte whiteColour = (byte) 255;
+		byte blackColour = (byte) 0;
+		int totalArea = this.X * this.Y;
+		for (int i = 0; i < totalArea; i++) {
+			pixelsCopy[i] = blackColour;
+		}
+		
+		for (int i = 0; i < pointCount; i++) {
+			pixelsCopy[yPoints[i]*width + xPoints[i]] = whiteColour;
+		}
+		
+
+		ImageProcessor processClusters = ip.duplicate();
+		processClusters.setPixels(pixelsCopy);
+		return processClusters;
+	}
+		
+		
+		
+		
+	public void findClusters(ImageProcessor ip, int clusterValue) {
+		
+		points = new Point[this.X][this.Y];
 		for (int i = 0; i <= xMax; i++) {
 			for (int j = 0; j <= yMax; j++) {
 				points[i][j] = new Point(i, j, ip.get(i, j));
 			}
 		}
 		
+		clustersAtValue = new ArrayList<Cluster>();
+		pointsAtValue = new ArrayList<Point>();
+		int count = 0;
+		for (int i = 0; i <= xMax; i++) {
+			for (int j = 0; j <= yMax; j++) {
+				if (points[i][j].value == clusterValue) {
+					pointsAtValue.add(points[i][j]);
+				}
+			}
+		}
+		
+		System.out.println("pointsAtValue is set up with size" + pointsAtValue.size());
+		
+		while(pointsAtValue.size() != 0) {
+			Point nextPoint = pointsAtValue.remove(0);
+			Cluster currentCluster = new Cluster(nextPoint, sliceNumber);
+			sameClusterToBeProcessed = new ArrayList<Point>();
+			sameClusterToBeProcessed.add(nextPoint);
+			processed = new HashSet<Point>();
+			processed.add(nextPoint);
+			
+			while(!sameClusterToBeProcessed.isEmpty()) {
+				nextPoint = sameClusterToBeProcessed.remove(0); //the value at index 0 is returned while being removed.
+				if (nextPoint.x - 1 >= xMin) {
+					considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
+				}
+				
+				if (nextPoint.x + 1 <= xMax) {
+					considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster);
+				}
+				
+				if (nextPoint.y - 1 >= yMin) {
+					considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster);
+				}
+				
+				if (nextPoint.y + 1 <= yMax) {
+					considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster);
+				}
+				
+			}
+			//System.out.println("sameClusterToBeProcessed is empty!");
+			clustersAtValue.add(currentCluster);
+		}
+			
+	}
+	//an entirely different implementation...
+	public void connectivityAnalysis(ImageProcessor ip) {
+		
 
 		clusterValue_clusters_MAP = new HashMap<Integer, ArrayList<Cluster>>();
-		ArrayList<Cluster> clustersAtValue;
 		
 		for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
 					clusterValue <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; clusterValue++)
 		{
-			clustersAtValue = new ArrayList<Cluster>();
-			pointsAtValue = new ArrayList<Point>();
-			for (int i = 0; i <= xMax; i++) {
-				for (int j = 0; j <= yMax; j++) {
-					if (points[i][j].value == clusterValue) {
-						pointsAtValue.add(points[i][j]);
-					}
-				}
-			}
-			
-			System.out.println("pointsAtValue is set up with size" + pointsAtValue.size());
-			
-			while(pointsAtValue.size() != 0) {
-				Point nextPoint = pointsAtValue.remove(0);
-				Cluster currentCluster = new Cluster(nextPoint, sliceNumber);
-				sameClusterToBeProcessed = new ArrayList<Point>();
-				sameClusterToBeProcessed.add(nextPoint);
-				processed = new HashSet<Point>();
-				processed.add(nextPoint);
-				
-				while(!sameClusterToBeProcessed.isEmpty()) {
-					nextPoint = sameClusterToBeProcessed.remove(0); //the value at index 0 is returned while being removed.
-					if (nextPoint.x - 1 >= xMin) {
-						considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
-					}
-					
-					if (nextPoint.x + 1 <= xMax) {
-						considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster);
-					}
-					
-					if (nextPoint.y - 1 >= yMin) {
-						considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster);
-					}
-					
-					if (nextPoint.y + 1 <= yMax) {
-						considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster);
-					}
-					
-				}
-				//System.out.println("sameClusterToBeProcessed is empty!");
-				clustersAtValue.add(currentCluster);
-			}
+			findClusters(ip, clusterValue);
 			
 			//at this stage all the clusters at this value have been performed.
 			//We know want to compute on these -- (Median, Dilate, Fill-holes, erode, watershed) to smooth out and join up close clusters.
-			int pointCount = 0;
-			for (Cluster c: clustersAtValue) {
-				pointCount += c.getArea();
-			}
-			int[] xPoints = new int[pointCount];
-			int[] yPoints = new int[pointCount];
 			
-			int pointIndex = 0;
-			for (Cluster c: clustersAtValue) {
-				for (Point p: c.points) {
-					xPoints[pointIndex] = p.x;
-					yPoints[pointIndex] = p.y;
-					pointIndex++;
-				}
-			}
-			//PolygonRoi initialClustersRoi = new PolygonRoi(xPoints, yPoints, pointCount, Roi.POLYGON);
-			int width = this.cs.X;
-			byte[] pixelsCopy = (byte[]) ip.getPixelsCopy();
-			byte whiteColour = (byte) 255;
-			byte blackColour = (byte) 0;
-			for (int i = 0; i < pointCount; i++) {
-				pixelsCopy[yPoints[i]*width + xPoints[i]] = whiteColour;
-			}
+			ImageProcessor highlightedClusters = highlightClusters(ip, clustersAtValue);
 			
-			int totalArea = this.cs.X * this.cs.Y;
-			for (int i = 0; i < totalArea; i++) {
-				if (pixelsCopy[i] != whiteColour) {
-					pixelsCopy[i] = blackColour;
-				}
-			}
-			
-			ImageProcessor processClusters = ip.duplicate();
-			processClusters.setPixels(pixelsCopy);
-			ImagePlus imp = new ImagePlus(processClusters);
+			ImagePlus imp = new ImagePlus("Display Processed Clusters", highlightedClusters);
 			
 			IJ.run(imp, "Median...", "2");
 			IJ.run(imp, "Invert", "");
@@ -721,14 +741,21 @@ class ObjectFinder implements Runnable {
 			IJ.run(imp, "Fill Holes", "");
 			IJ.run(imp, "Erode", "");
 			IJ.run(imp, "Watershed", "");
-
+			
+			
 			//TODO: Find the code implementation of watershed -- see if it is possible to convert the resulting data structures into
-			//the new cluster list.
+			//the new cluster list. Do I need to do that?? This seems not too inefficient for now...
 			
+			findClusters(highlightedClusters, 0);
 			
-			//System.out.println("Displaying for " + sliceNumber + ", value: " + clusterValue);
-			byte[] pixels = (byte[]) processClusters.getPixels();
-			
+			ArrayList<Cluster> largeClusters = new ArrayList<Cluster>();
+			for (Cluster c: clustersAtValue) {
+				if (c.getArea() >= Color_Segmenter.minClusterSize) {
+					largeClusters.add(c);
+				}
+			}
+			System.out.println("On slice: " + sliceNumber + " value: " + clusterValue + " largeClusters has " + largeClusters.size() + " cluster");
+			clusterValue_clusters_MAP.put(clusterValue, largeClusters);
 		}
 			
 		
