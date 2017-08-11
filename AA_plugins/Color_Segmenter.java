@@ -533,7 +533,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 
 		float areaDifference = (float) Math.abs((c1.area - c2.area)/(c1.area + c2.area));
 
-		float comparison = colourDifference*colourDifferenceWeight + aspectRatioChange*aspectRatioDifferenceWeight + areaDifference*areaDifferenceWeight;
+		float comparison = (-colourDifference*colourDifferenceWeight) + aspectRatioChange*aspectRatioDifferenceWeight + areaDifference*areaDifferenceWeight;
 		return comparison;
 	}
 
@@ -548,8 +548,8 @@ class ObjectFinder implements Runnable {
 	ImageStack stack;
 	Color_Segmenter cs;
 	
-	static int rootLowerBound = 8; //so 4-5-6 is allowed
-	static int rootUpperBound = 26; //so 11-12-13 is allowed.
+	static int rootLowerBound = 8;
+	static int rootUpperBound = 26;
 	static int clusterDeviation = 1;
 	int count;
 	int xMin, yMin, xMax, yMax;
