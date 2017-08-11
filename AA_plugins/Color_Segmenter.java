@@ -494,7 +494,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			}
 		}
 		
-		System.out.println("Cluster lengths: " + clusterLengths);
+		System.out.println("Cluster lengths: " + clusterLengths); //TODO why is this wrong?
 	}
 
 	public void highlight(ArrayList<Cluster> clusters) {
@@ -548,7 +548,7 @@ class ObjectFinder implements Runnable {
 	ImageStack stack;
 	Color_Segmenter cs;
 	
-	static int rootLowerBound = 8;
+	static int rootLowerBound = 14;
 	static int rootUpperBound = 26;
 	static int clusterDeviation = 1;
 	int count;
