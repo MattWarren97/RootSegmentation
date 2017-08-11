@@ -53,27 +53,6 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	HashMap<Cluster, Cluster> replacements;
 	
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
-
-
-	/*public void run(ImageProcessor ip) {
-		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>();
-
-		//could easily make this multithreaded I think... (TODO)
-		ImageStack stack = this.image.getStack();
-		for (int i = 1; i <= stack.getSize(); i++) {
-			System.out.println("Run on Slice: " + i);
-			ImageProcessor nextSlice = stack.getProcessor(i);
-			convertToBins(nextSlice);
-			connectivityAnalysis(nextSlice);
-			sliceClusterMap.put(i, largeClusters);
-		}
-		//ImagePlus image = new ImagePlus("4bitimage", stack);
-		//image.show();
-		System.out.println("Finished calculating clusters for each image. Now trying to link them.");
-
-		printDifferenceCounts();
-
-	}*/
 	
 	//multithreaded run version
 	public void run(ImageProcessor ip) {
@@ -594,10 +573,10 @@ class ObjectFinder implements Runnable {
 		this.cs = cs;
 		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
 		this.count = 0;
-		int xMin = 0;
-		int yMin = 0;
-		int xMax = this.cs.X - 1;
-		int yMax = this.cs.Y - 1;
+		xMin = 0;
+		yMin = 0;
+		xMax = this.cs.X - 1;
+		yMax = this.cs.Y - 1;
 		this.X = this.cs.X;
 		this.Y = this.cs.Y;
 
@@ -614,7 +593,7 @@ class ObjectFinder implements Runnable {
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			convertToBins(nextSlice);
 			connectivityAnalysis(nextSlice);
-			//cs.sliceClusterMap.put(sliceNumber, largeClusters);
+			sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
 		}
 		findChains();
 	}
@@ -682,9 +661,7 @@ class ObjectFinder implements Runnable {
 				}
 			}
 		}
-		
-		System.out.println("pointsAtValue is set up with size" + pointsAtValue.size());
-		
+				
 		while(pointsAtValue.size() != 0) {
 			Point nextPoint = pointsAtValue.remove(0);
 			Cluster currentCluster = new Cluster(nextPoint, sliceNumber);
@@ -752,9 +729,9 @@ class ObjectFinder implements Runnable {
 			for (Cluster c: clustersAtValue) {
 				if (c.getArea() >= Color_Segmenter.minClusterSize) {
 					largeClusters.add(c);
+					c.postProcessing();
 				}
 			}
-			System.out.println("On slice: " + sliceNumber + " value: " + clusterValue + " largeClusters has " + largeClusters.size() + " cluster");
 			clusterValue_clusters_MAP.put(clusterValue, largeClusters);
 		}
 			
@@ -779,238 +756,6 @@ class ObjectFinder implements Runnable {
 		}
 		processed.add(newPoint);
 	}
-		
-			
-	
-	/*
-	public void connectivityAnalysis(ImageProcessor ip) {
-		
-		//System.out.println("Begin connectivityAnalysis on " + sliceNumber);
-		int xMin = 0;
-		int yMin = 0;
-		int xMax = this.cs.X - 1;
-		int yMax = this.cs.Y - 1;
-		
-		
-		newClusterToBeProcessed = new ArrayList<Point>();
-		sameClusterToBeProcessed = new ArrayList<Point>();
-		clusterValue_clusters_MAP = new HashMap<Integer, ArrayList<Cluster>>();
-		int largeClusters = 0;
-		
-		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
-		{
-			clusterValue_clusters_MAP.put(i, new ArrayList<Cluster>());
-		}
-		
-		points = new Point[xMax+1][yMax+1];
-		for (int i = 0; i < xMax+1; i++) {
-			for (int j = 0; j < yMax+1; j++) {
-				points[i][j] = new Point(i, j, ip.get(i, j));
-			}
-		}
-		
-		addToNewClusterList(points[0][0]);
-		
-		Cluster currentCluster = null;
-		
-		
-		while(!(newClusterToBeProcessed.isEmpty() && sameClusterToBeProcessed.isEmpty())) {
-			count++;
-			Point nextPoint;
-			boolean fromSameCluster;
-			if (!sameClusterToBeProcessed.isEmpty()) {
-				nextPoint = sameClusterToBeProcessed.get(0);
-				fromSameCluster = true;
-			}
-			else {
-				if (currentCluster != null) {
-					//finalise the cluster --
-					if (currentCluster.getArea() > Color_Segmenter.minClusterSize
-							&& currentCluster.value >= ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation
-							&& currentCluster.value <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation) 
-					{
-						//only add a cluster to the data structure if it is large enough.
-						largeClusters++;
-						ArrayList<Cluster> clusterList = clusterValue_clusters_MAP.get(currentCluster.value);
-						
-						//if (sliceNumber == 1 && currentCluster.value == 10) {
-						//	currentCluster.postProcessing();
-						//	if (clusterList.contains(currentCluster)) {
-						//		System.out.println("not a new cluster!!: " + currentCluster);
-						//		clusterList.add(currentCluster);
-						//	} else {
-						//		System.out.println("NEW CLUSTER:" + currentCluster);
-						//		clusterList.add(currentCluster);
-						//	}
-						//}
-						//else {
-						//	clusterList.add(currentCluster);
-						//}
-						clusterList.add(currentCluster);
-
-						clusterValue_clusters_MAP.put(currentCluster.value, clusterList);
-					}
-					
-					for (Point p: currentCluster.points) {
-						// to allow these points to be added to other clusters too.
-						p.accountedForInSameCluster = false;
-					}
-					
-					currentCluster = null;
-				}
-				
-				nextPoint = newClusterToBeProcessed.get(0);
-				if (nextPoint.hasCluster) {
-					newClusterToBeProcessed.remove(0);
-					continue;
-				}
-				fromSameCluster = false;
-				currentCluster = new Cluster(nextPoint, sliceNumber);
-				//if (sliceNumber == 1 && nextPoint.value == 10 && nextPoint == points[20][7]) {
-				//	System.out.println("Point 20, 7 starting a new cluster...");
-				//	System.out.println(fromSameCluster);
-				//}
-				
-			}
-			
-			if (nextPoint.x - 1 >= xMin) {
-				considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster, nextPoint);
-			}
-			
-			if (nextPoint.x + 1 <= xMax) {
-				considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster, nextPoint);
-			}
-			
-			if (nextPoint.y - 1 >= yMin) {
-				considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster, nextPoint);
-			}
-			
-			if (nextPoint.y + 1 <= yMax) {
-				considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster, nextPoint);
-			}
-			
-			if (fromSameCluster) {
-				sameClusterToBeProcessed.remove(0);
-			}
-			else {
-				newClusterToBeProcessed.remove(0);
-			}
-			
-		}
-
-		//System.out.println("finished while loop on start: " + this.start);
-		
-		for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-					i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
-		{
-			ArrayList<Cluster> clusters = clusterValue_clusters_MAP.get(i);
-			for (Cluster c: clusters) {
-				c.postProcessing();
-			}
-		}
-		
-		//if (sliceNumber == 1) {
-		//	Integer value = 10;
-		//	
-		//	System.out.println("At value " + value);
-		//	System.out.println(clusterValue_clusters_MAP.get(value));
-		//	System.out.println("List size is " + clusterValue_clusters_MAP.get(value).size());
-		//	System.out.println("Set size is " + (new HashSet(clusterValue_clusters_MAP.get(value)).size()));
-		//	
-		//	for (int i = 0; i < 10; i++) {
-		//		System.out.println();
-		//	}
-		//	
-		//	try {
-		//		Thread.sleep(180000);
-		//	} catch (Exception e) {}
-		//
-		//}
-		
-		
-		
-		//String output = "";
-		//for (Integer value : clusterValue_clusters_MAP.keySet()) {
-			//ArrayList<Cluster> clustersListNoDupes = new ArrayList<Cluster>(new HashSet<Cluster>(clusterValue_clusters_MAP.get(value)));
-			//clusterValue_clusters_MAP.put(value, clustersListNoDupes);
-			//output += clusterValue_clusters_MAP.get(value).size() + " - ";
-			//output += (new HashSet(clusterValue_clusters_MAP.get(value)).size()) + ", ";
-		//}
-		
-		//System.out.println("for sliceNumber " + sliceNumber + ": " + output);
-		
-		sliceNumber_clusterValue_clusters_MAP.put(sliceNumber, clusterValue_clusters_MAP);
-		//for (int i = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-		//			i <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; i++) 
-		//{
-		//	System.out.println(this.start + " - " + this.end + ": value " + i + ", :");
-
-		//	System.out.println(sliceNumber + ": " + i + ", " + clusterValue_clusters_MAP.get(i).size());
-		//	
-		//}
-		//System.out.println("LargeClusters: " + largeClusters);
-	}*/
-	
-	/*
-	public void considerPoint(int x, int y, Cluster currentCluster, Point prevPoint) {
-		Point newPoint = points[x][y];
-		
-		//System.out.println("count: " + count + ", " + newPoint + ", prevPoint: " + prevPoint +", val: " + newPoint.value + ", hasCl: " + newPoint.hasCluster + ", accNew: " + newPoint.accountedForInNewCluster + ", accSame: " + newPoint.accountedForInSameCluster + ", considered: " + newPoint.considered + ", addedNew: " + newPoint.addedToNewClusterList + ", addedSame: " + newPoint.addedToSameClusterList + ", sameSize: " + sameClusterToBeProcessed.size() + ", newSize: " + newClusterToBeProcessed.size());
-		
-		boolean hasCluster = false;
-		if (newPoint.hasCluster) {
-			//then that cluster is either the currentCluster, [in which case nothing to do here]
-			// or it is a completed cluster. Points in a completed cluster may be added to other clusters too.
-			// but points in a completed cluster don't need to be processed again.
-			if (newPoint.cluster == currentCluster) {
-				return;
-			}
-			else {
-				hasCluster = true;
-			}
-		}
-		if (Math.abs(newPoint.value - currentCluster.value) <= ObjectFinder.clusterDeviation) {
-			boolean sameValue = (newPoint.value == currentCluster.value);
-			currentCluster.addPoint(newPoint, sameValue);
-			//will be processed to complete this cluster
-			
-			addToSameClusterList(newPoint);
-			
-			if (!sameValue && !hasCluster) {
-				//if the point isn't the same value, it needs to be processed as it's own cluster also.
-				addToNewClusterList(newPoint);
-			}
-		}
-		else {
-			if (!hasCluster) {
-				addToNewClusterList(newPoint);
-			}
-		}
-		//else {
-		//	if (!hasCluster)
-		//	currentCluster.addNeighbour(newPoint);
-		//}
-			
-	}
-	public void addToSameClusterList(Point p) {
-		//if it has already been added to the list -- then 
-		
-		if (!p.accountedForInSameCluster) {
-			sameClusterToBeProcessed.add(p);
-			p.accountedForInSameCluster = true;
-			//System.out.println(p + " added to sameClusterList");
-
-		}
-	}
-	
-	public void addToNewClusterList(Point p) {
-		if (!p.accountedForInNewCluster) {
-			newClusterToBeProcessed.add(p);
-			p.accountedForInNewCluster = true;
-			//System.out.println(p + " added to newClusterList");
-		}
-	}*/
 	
 	//not implemented at this stage (while still divided into multiple threads) yet.
 	public void findChains() {
@@ -1019,177 +764,3 @@ class ObjectFinder implements Runnable {
 	}
 		
 }
-/*class ObjectFinder implements Runnable {
-	
-	
-	//TODO
-	//problems:
-	//- newPoint.hasCluster is no longer sufficient to rule out processing a point.
-	// 	because points can now be used in multiple clusters, and processing a point is necessary to access its neighbours.
-	//- need to be able to add points to sameClusterToBeProcessed without (always) changing that point's cluster. 
-	//	[fixed!] -- made a change to cluster.addPoint, still TODO: apply it.
-	//- need to store clusters by their central value so that I can discriminate in comparing a 4-5-6 with  only 5-6-7, not any 7-8-9.
-	//- Could implement some level of chain-linkingAnalysis to the ObjectFinder (still in parallelised) --
-	//	then use those results later on to combine across the arbitrary divisions [would speed it up].
-	//- What if I want to change the limits for a root (1-2-3 and up allowed or.. etc. (?), or make it 8, or 32 bins rather than 16..
-	//	Should make the actual numbers (4-5-6 / 11-12-13) at the boundaries changeable.
-	//- While doing this, might as well fix the A-B-C-D-E-F-G... & B-C-D-E-F_G... problem.
-	
-	int start, end;
-	ImageStack stack;
-	Color_Segmenter cs;
-	
-	ArrayList<Cluster> clusters;
-	ArrayList<Cluster> largeClusters;
-	ArrayList<Point> toBeProcessed;
-	ArrayList<Point> sameClusterToBeProcessed;
-	Point[][] points;
-	int sliceNumber;
-		
-	public ObjectFinder(int start, int end, ImageStack stack, Color_Segmenter cs) {
-		this.start = start;
-		this.end = end;
-		this.stack = stack;
-		this.cs = cs;
-
-	}
-	public void run() {
-		System.out.println("Thread between " + start + "-" + end + " has begun.");
-		for (sliceNumber = start; sliceNumber <= end; sliceNumber++) {
-			System.out.println("Run on Slice: " + sliceNumber);
-			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
-			convertToBins(nextSlice);
-			connectivityAnalysis(nextSlice);
-			cs.sliceClusterMap.put(sliceNumber, largeClusters);
-		}
-	}
-	
-	public void convertToBins(ImageProcessor ip) {
-		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
-		ip.applyTable(Color_Segmenter.lut);
-	}
-
-
-	public void connectivityAnalysis(ImageProcessor ip) {
-		int xMin = 0;
-		int yMin = 0;
-		int xMax = this.cs.X-1;
-		int yMax = this.cs.Y-1;
-		
-		
-		//start at 4-5-6 up to 11-12-13
-		//compare the 5-6-7 slice 0 clustering with the clusters for:
-		//4-5-6, 5-6-7 and 6-7-8 on slice 1 -- but not 7-8-9 or 3-4-5 (maximum jump of 1 & also 3-4-5 is too low I think)
-		HashMap<Integer, ArrayList<Cluster>> centralValue_to_clusters = new HashMap<Integer, ArrayList<Cluster>>();
-		ArrayList<Cluster> clusters;
-		int minRootValue = 4;
-		int maxRootValue = 13;
-		for (int i = 0; i < maxStart - minStart; i++) {
-		
-			clusters = new ArrayList<Cluster>();
-			largeClusters = new ArrayList<Cluster>();
-			toBeProcessed = new ArrayList<Point>();
-			sameClusterToBeProcessed = new ArrayList<Point>();
-
-			points = new Point[xMax+1][yMax+1];
-			for (int i = 0; i < xMax+1; i++) {
-				for (int j = 0; j < yMax+1; j++) {
-					points[i][j] = new Point(i, j, ip.get(i, j));
-				}
-			}
-
-			toBeProcessed.add(points[0][0]);
-
-			int currentClusterValue;
-			
-			while(toBeProcessed.size() != 0 || sameClusterToBeProcessed.size() != 0) {
-				boolean sameCluster = false;
-				Point currentPoint;
-				if (sameClusterToBeProcessed.size() != 0) {
-					currentPoint = sameClusterToBeProcessed.get(0);
-					sameCluster = true;
-				}
-				else {
-					currentPoint = toBeProcessed.get(0);
-					this.clusters.add(new Cluster(currentPoint, sliceNumber));
-					currentClusterValue = currentPoint.value;
-				}
-				//System.out.println("New point is " + currentPoint);
-				//System.out.println("Length of toBeProcessed, sameClusterToBeProcessed is " + toBeProcessed.size() + "," + sameClusterToBeProcessed.size());
-
-				//first try to the right of this point --
-				if(currentPoint.x + 1 <= xMax) {
-					considerPoint(currentPoint.x+1, currentPoint.y, currentPoint);
-				}
-				//next try the point to the left of this point --
-				if (currentPoint.x - 1  >= xMin) {
-					considerPoint(currentPoint.x-1, currentPoint.y, currentPoint);
-				}
-				//next try below this point --
-				if (currentPoint.y + 1 <= yMax) {
-					considerPoint(currentPoint.x, currentPoint.y+1, currentPoint);
-				}
-				//finally try above this point --
-				if (currentPoint.y - 1 >= yMin) {
-					considerPoint(currentPoint.x, currentPoint.y-1, currentPoint);
-				}
-
-				//then remove that last point from its list.
-				if (sameCluster) {
-					sameClusterToBeProcessed.remove(0);
-				}
-				else {
-					toBeProcessed.remove(0);
-				}
-			}
-
-		//now going through and sorting out 'future neighbours' for each cluster.
-		for (Cluster c: clusters) {
-			c.postProcessing();
-		}
-
-		for (Cluster c: clusters) {
-			if (c.getArea() >= Color_Segmenter.minClusterSize) {
-				largeClusters.add(c);
-			}
-		}
-		System.out.println("Points: " + points.length*(points[0].length));
-		System.out.println("Clusters: " + clusters.size());
-		System.out.println(Color_Segmenter.minClusterSize + "-size clusters: " + largeClusters.size());
-		clusters = null;
-		points = null;
-	}
-	
-	public void considerPoint(int x, int y, Point previous) {
-		//System.out.println("Considering " + x + ", " + y);
-		Point newPoint = points[x][y];
-		if (newPoint.hasCluster) {
-			//System.out.println("Ignoring " + newPoint + " - it has a cluster!");
-			return;
-		}
-		if (newPoint.value == previous.value || newPoint.value == previous.value - 1 || newPoint.value == previous.value+1) {
-			previous.cluster.addPoint(newPoint);
-			if (newPoint.value == previous.value) {
-				sameClusterToBeProcessed.add(newPoint);
-			}
-			else {
-				
-			if (!sameClusterToBeProcessed.contains(newPoint)) {
-				sameClusterToBeProcessed.add(newPoint);
-				//System.out.println("Adding " + newPoint + " to sameClusterToBeProcessed");
-
-			}
-		}
-		else {
-			previous.cluster.addNeighbour(newPoint);
-			if (!toBeProcessed.contains(newPoint)) {
-				toBeProcessed.add(newPoint);
-				//System.out.println("Adding " + newPoint + " to toBeProcessed");
-			}
-		}
-	}
-}*/
-
-
-
-

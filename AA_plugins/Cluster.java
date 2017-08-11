@@ -90,7 +90,7 @@ public class Cluster {
 		calculateValues();
 	}
 
-	public void calculateValues() {
+	private void calculateValues() {
 		this.calculatedValues = true;
 		this.area = getArea();
 		this.aspectRatio = getAspectRatio();
