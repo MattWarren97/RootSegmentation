@@ -548,8 +548,8 @@ class ObjectFinder implements Runnable {
 	ImageStack stack;
 	Color_Segmenter cs;
 	
-	static int rootLowerBound = 14;
-	static int rootUpperBound = 26;
+	static int rootLowerBound = 0;
+	static int rootUpperBound = 32;
 	static int clusterDeviation = 1;
 	int count;
 	int xMin, yMin, xMax, yMax;
