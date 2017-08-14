@@ -210,6 +210,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								System.out.println("Matched with " + bestCluster);
 							}
 							connectedClusters.put(c1, bestCluster);
+							System.out.println("Matched: " + c1 + bestCluster);
 						}
 					}
 						
@@ -641,9 +642,23 @@ class ObjectFinder implements Runnable {
 		
 		
 		
-		
+	//pixelValue and clusterValue need to be different:
+	//First go: pixelValue == clusterValue -- look for clusters around pixelValue, create clusters of clusterValue.
+	//Second go: pixelValue = 0, clusterValue is the same as before. Look for clusters at val 0, but create clusters of clusterValue.
+	
+	//need to find a way to make sure looking for clusters around pixel-Value0 doesn't pick up pixel-value 1.
+	//Unless pixel-value 0 is impossible.... [due to original range as 0-31], then invert so 1 == old 254 (which can't exist).
+	//I think that is the case actually.
 	public void findClusters(ImageProcessor ip, int clusterValue) {
-		
+		findClusters(ip, clusterValue, clusterValue);	
+	}
+	public void findClusters(ImageProcessor ip, int pixelValue, int clusterValue) {
+		if (sliceNumber == 1) {
+			System.out.println("Running findClusters on " + pixelValue);
+			for (int i = 0; i < 20; i++) {
+				System.out.println();
+			}
+		}
 		points = new Point[this.X][this.Y];
 		for (int i = 0; i <= xMax; i++) {
 			for (int j = 0; j <= yMax; j++) {
@@ -656,22 +671,31 @@ class ObjectFinder implements Runnable {
 		int count = 0;
 		for (int i = 0; i <= xMax; i++) {
 			for (int j = 0; j <= yMax; j++) {
-				if (points[i][j].value == clusterValue) {
+				if (points[i][j].value == pixelValue) {
 					pointsAtValue.add(points[i][j]);
 				}
 			}
 		}
-				
+		
+		processed = new HashSet<Point>();		
 		while(pointsAtValue.size() != 0) {
 			Point nextPoint = pointsAtValue.remove(0);
+			if (processed.contains(nextPoint)) {
+				System.out.println(nextPoint + " has already been processed!");
+				continue;
+			}
 			Cluster currentCluster = new Cluster(nextPoint, sliceNumber);
+			currentCluster.setValue(clusterValue);
+			if (sliceNumber == 1) {
+				System.out.println("new cluster at point " + nextPoint + " at cluster value: " + clusterValue + ", point value is " + nextPoint.value);
+			}
 			sameClusterToBeProcessed = new ArrayList<Point>();
 			sameClusterToBeProcessed.add(nextPoint);
-			processed = new HashSet<Point>();
-			processed.add(nextPoint);
+			
 			
 			while(!sameClusterToBeProcessed.isEmpty()) {
 				nextPoint = sameClusterToBeProcessed.remove(0); //the value at index 0 is returned while being removed.
+				processed.add(nextPoint);
 				if (nextPoint.x - 1 >= xMin) {
 					considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
 				}
@@ -694,6 +718,32 @@ class ObjectFinder implements Runnable {
 		}
 			
 	}
+	
+	public void considerPoint(int x, int y, Cluster c) {
+		Point newPoint = points[x][y];
+		if (processed.contains(newPoint)) {
+			System.out.println("Not considering point " + newPoint + " because it is already processed.");
+			return;
+		}
+		int valueDifference = Math.abs(newPoint.value - c.value);
+		count++;
+		//if (count % 10000 == 0) {
+		System.out.println("Considering " + newPoint + "valueDifference is " + newPoint.value + " - " + c.value + " = " + (newPoint.value-c.value));
+		//}
+		if (valueDifference <= ObjectFinder.clusterDeviation) {
+			sameClusterToBeProcessed.add(newPoint);
+			if (valueDifference == 0) {
+				pointsAtValue.remove(newPoint);
+				c.addPoint(newPoint, true);
+			}
+			else {
+				c.addPoint(newPoint, false);
+			}
+		}
+
+	}
+	
+	
 	//an entirely different implementation...
 	public void connectivityAnalysis(ImageProcessor ip) {
 		
@@ -710,7 +760,7 @@ class ObjectFinder implements Runnable {
 			
 			ImageProcessor highlightedClusters = highlightClusters(ip, clustersAtValue);
 			
-			ImagePlus imp = new ImagePlus("Display Processed Clusters", highlightedClusters);
+			ImagePlus imp = new ImagePlus("Display Processed Clusters" + clusterValue, highlightedClusters);
 			
 			IJ.run(imp, "Median...", "2");
 			IJ.run(imp, "Invert", "");
@@ -719,6 +769,9 @@ class ObjectFinder implements Runnable {
 			IJ.run(imp, "Erode", "");
 			IJ.run(imp, "Watershed", "");
 			
+			if (sliceNumber == 1) {
+				imp.show();
+			}
 			
 			//TODO: Find the code implementation of watershed -- see if it is possible to convert the resulting data structures into
 			//the new cluster list. Do I need to do that?? This seems not too inefficient for now...
@@ -728,6 +781,7 @@ class ObjectFinder implements Runnable {
 			ArrayList<Cluster> largeClusters = new ArrayList<Cluster>();
 			for (Cluster c: clustersAtValue) {
 				if (c.getArea() >= Color_Segmenter.minClusterSize) {
+					c.setValue(clusterValue);
 					largeClusters.add(c);
 					c.postProcessing();
 				}
@@ -738,24 +792,7 @@ class ObjectFinder implements Runnable {
 		
 	}
 	
-	public void considerPoint(int x, int y, Cluster c) {
-		Point newPoint = points[x][y];
-		if (processed.contains(newPoint)) {
-			return;
-		}
-		int valueDifference = Math.abs(newPoint.value - c.value);
-		if (valueDifference <= ObjectFinder.clusterDeviation) {
-			sameClusterToBeProcessed.add(newPoint);
-			if (valueDifference == 0) {
-				pointsAtValue.remove(newPoint);
-				c.addPoint(newPoint, true);
-			}
-			else {
-				c.addPoint(newPoint, false);
-			}
-		}
-		processed.add(newPoint);
-	}
+	
 	
 	//not implemented at this stage (while still divided into multiple threads) yet.
 	public void findChains() {

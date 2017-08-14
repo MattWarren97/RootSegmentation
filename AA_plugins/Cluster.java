@@ -14,7 +14,8 @@ public class Cluster {
 
 	public Cluster(Point p, int z) {
 		this.points = new ArrayList<Point>();
-		this.value = p.value;
+		this.value = 0;
+		//this.value = ;
 		this.addPoint(p, true);
 		this.z = z;
 		this.calculatedValues = false;
@@ -33,6 +34,10 @@ public class Cluster {
 	public int getArea() {
 		return this.points.size();
 	}
+	
+	public void setValue(int value) {
+		this.value = value;
+	}
 
 	public String toString() {
 		//this.calculateValues();
@@ -41,6 +46,7 @@ public class Cluster {
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
 		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
 		toReturn = toReturn + ", Value: " + value;
+		toReturn = toReturn + ", initialPoint: " + this.points.get(0);
 		return toReturn+"\n";
 	}
 
