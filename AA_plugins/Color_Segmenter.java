@@ -691,47 +691,61 @@ class ObjectFinder implements Runnable {
 			}
 			sameClusterToBeProcessed = new ArrayList<Point>();
 			sameClusterToBeProcessed.add(nextPoint);
+			processed.add(nextPoint);
 			
 			
 			while(!sameClusterToBeProcessed.isEmpty()) {
 				nextPoint = sameClusterToBeProcessed.remove(0); //the value at index 0 is returned while being removed.
-				processed.add(nextPoint);
 				if (nextPoint.x - 1 >= xMin) {
-					considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster);
+					considerPoint(nextPoint.x - 1, nextPoint.y, currentCluster, pixelValue);
 				}
 				
 				if (nextPoint.x + 1 <= xMax) {
-					considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster);
+					considerPoint(nextPoint.x + 1, nextPoint.y, currentCluster, pixelValue);
 				}
 				
 				if (nextPoint.y - 1 >= yMin) {
-					considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster);
+					considerPoint(nextPoint.x, nextPoint.y - 1, currentCluster, pixelValue);
 				}
 				
 				if (nextPoint.y + 1 <= yMax) {
-					considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster);
+					considerPoint(nextPoint.x, nextPoint.y + 1, currentCluster, pixelValue);
 				}
 				
 			}
 			//System.out.println("sameClusterToBeProcessed is empty!");
 			clustersAtValue.add(currentCluster);
+			if (sliceNumber == 1) {
+				System.out.println("Cluster added with size " + currentCluster.getArea());
+			}
+		}
+		if (sliceNumber ==1) {
+			System.out.println("Finished finding clusters at value " + pixelValue);
 		}
 			
 	}
 	
-	public void considerPoint(int x, int y, Cluster c) {
+	public void considerPoint(int x, int y, Cluster c, int clusterCentralPixelValue) {
 		Point newPoint = points[x][y];
 		if (processed.contains(newPoint)) {
-			System.out.println("Not considering point " + newPoint + " because it is already processed.");
+			if (sliceNumber ==1) {
+				//System.out.println("Not considering point " + newPoint + " because it is already processed.");
+			}
 			return;
 		}
-		int valueDifference = Math.abs(newPoint.value - c.value);
+		int valueDifference = Math.abs(newPoint.value - clusterCentralPixelValue);
 		count++;
 		//if (count % 10000 == 0) {
-		System.out.println("Considering " + newPoint + "valueDifference is " + newPoint.value + " - " + c.value + " = " + (newPoint.value-c.value));
+		if (sliceNumber ==1) {
+			//System.out.println("Considering " + newPoint + "valueDifference is " + newPoint.value + " - " + c.value + " = " + (newPoint.value-c.value));
+		}
 		//}
 		if (valueDifference <= ObjectFinder.clusterDeviation) {
 			sameClusterToBeProcessed.add(newPoint);
+			processed.add(newPoint);
+			if (sliceNumber == 1) {
+				System.out.println("Adding " + newPoint);
+			}
 			if (valueDifference == 0) {
 				pointsAtValue.remove(newPoint);
 				c.addPoint(newPoint, true);
@@ -776,7 +790,7 @@ class ObjectFinder implements Runnable {
 			//TODO: Find the code implementation of watershed -- see if it is possible to convert the resulting data structures into
 			//the new cluster list. Do I need to do that?? This seems not too inefficient for now...
 			
-			findClusters(highlightedClusters, 0);
+			findClusters(highlightedClusters, 0, clusterValue);
 			
 			ArrayList<Cluster> largeClusters = new ArrayList<Cluster>();
 			for (Cluster c: clustersAtValue) {
