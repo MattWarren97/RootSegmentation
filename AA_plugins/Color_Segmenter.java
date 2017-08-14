@@ -210,7 +210,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								System.out.println("Matched with " + bestCluster);
 							}
 							connectedClusters.put(c1, bestCluster);
-							System.out.println("Matched: " + c1 + bestCluster);
+							System.out.println("Have matched up: " + c1 + bestCluster);
 						}
 					}
 						
@@ -653,12 +653,12 @@ class ObjectFinder implements Runnable {
 		findClusters(ip, clusterValue, clusterValue);	
 	}
 	public void findClusters(ImageProcessor ip, int pixelValue, int clusterValue) {
-		if (sliceNumber == 1) {
-			System.out.println("Running findClusters on " + pixelValue);
-			for (int i = 0; i < 20; i++) {
-				System.out.println();
-			}
-		}
+		//if (sliceNumber == 1) {
+		//	System.out.println("Running findClusters on " + pixelValue);
+		//	for (int i = 0; i < 20; i++) {
+		//		System.out.println();
+		//	}
+		//}
 		points = new Point[this.X][this.Y];
 		for (int i = 0; i <= xMax; i++) {
 			for (int j = 0; j <= yMax; j++) {
@@ -686,9 +686,9 @@ class ObjectFinder implements Runnable {
 			}
 			Cluster currentCluster = new Cluster(nextPoint, sliceNumber);
 			currentCluster.setValue(clusterValue);
-			if (sliceNumber == 1) {
-				System.out.println("new cluster at point " + nextPoint + " at cluster value: " + clusterValue + ", point value is " + nextPoint.value);
-			}
+			//if (sliceNumber == 1) {
+			//	System.out.println("new cluster at point " + nextPoint + " at cluster value: " + clusterValue + ", point value is " + nextPoint.value);
+			//}
 			sameClusterToBeProcessed = new ArrayList<Point>();
 			sameClusterToBeProcessed.add(nextPoint);
 			processed.add(nextPoint);
@@ -715,13 +715,13 @@ class ObjectFinder implements Runnable {
 			}
 			//System.out.println("sameClusterToBeProcessed is empty!");
 			clustersAtValue.add(currentCluster);
-			if (sliceNumber == 1) {
-				System.out.println("Cluster added with size " + currentCluster.getArea());
-			}
+			//if (sliceNumber == 1) {
+			//	System.out.println("Cluster added with size " + currentCluster.getArea());
+			//}
 		}
-		if (sliceNumber ==1) {
-			System.out.println("Finished finding clusters at value " + pixelValue);
-		}
+		//if (sliceNumber ==1) {
+		//	System.out.println("Finished finding clusters at value " + pixelValue);
+		//}
 			
 	}
 	
@@ -743,9 +743,9 @@ class ObjectFinder implements Runnable {
 		if (valueDifference <= ObjectFinder.clusterDeviation) {
 			sameClusterToBeProcessed.add(newPoint);
 			processed.add(newPoint);
-			if (sliceNumber == 1) {
-				System.out.println("Adding " + newPoint);
-			}
+			//if (sliceNumber == 1) {
+			//	System.out.println("Adding " + newPoint);
+			//}
 			if (valueDifference == 0) {
 				pointsAtValue.remove(newPoint);
 				c.addPoint(newPoint, true);
