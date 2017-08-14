@@ -728,17 +728,17 @@ class ObjectFinder implements Runnable {
 	public void considerPoint(int x, int y, Cluster c, int clusterCentralPixelValue) {
 		Point newPoint = points[x][y];
 		if (processed.contains(newPoint)) {
-			if (sliceNumber ==1) {
+			//if (sliceNumber ==1) {
 				//System.out.println("Not considering point " + newPoint + " because it is already processed.");
-			}
+			//}
 			return;
 		}
 		int valueDifference = Math.abs(newPoint.value - clusterCentralPixelValue);
 		count++;
 		//if (count % 10000 == 0) {
-		if (sliceNumber ==1) {
+		//if (sliceNumber ==1) {
 			//System.out.println("Considering " + newPoint + "valueDifference is " + newPoint.value + " - " + c.value + " = " + (newPoint.value-c.value));
-		}
+		//}
 		//}
 		if (valueDifference <= ObjectFinder.clusterDeviation) {
 			sameClusterToBeProcessed.add(newPoint);
@@ -783,9 +783,9 @@ class ObjectFinder implements Runnable {
 			IJ.run(imp, "Erode", "");
 			IJ.run(imp, "Watershed", "");
 			
-			if (sliceNumber == 1) {
-				imp.show();
-			}
+			//if (sliceNumber == 1) {
+				//imp.show();
+			//}
 			
 			//TODO: Find the code implementation of watershed -- see if it is possible to convert the resulting data structures into
 			//the new cluster list. Do I need to do that?? This seems not too inefficient for now...
