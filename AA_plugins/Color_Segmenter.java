@@ -24,7 +24,7 @@ import org.apache.commons.collections4.bidimap.*;
 
 import java.util.*;
 
-public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter {
+public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter, Runnable {
 	
 
 
@@ -62,7 +62,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	int minCenterX, maxCenterX, minCenterY, maxCenterY;
 	
 	public void run(ImageProcessor ip) {
+		System.out.println("Creating gui..");
 		new LimitSelecterFrame(this);
+		System.out.println("Created gui!");
 	}
 	
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits) {
@@ -73,7 +75,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		ObjectFinder.rootUpperBound = rootUpperBound;
 		this.useLimits = false;
 		
-		this.run();
+		System.out.println("Now about to run!");
+		Thread t = new Thread(this);
+		t.start();
 	}
 	
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits, int minSliceNumber,
@@ -96,7 +100,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		this.minCenterY = minCenterY;
 		this.maxCenterY = maxCenterY;
 		
-		this.run();
+		System.out.println("Now about to run!");
+		Thread t = new Thread(this);
+		t.start();
 	}
 						
 		
@@ -952,7 +958,7 @@ class LimitSelecterFrame extends JFrame {
 		this.cs = cs;
 		
 		this.setTitle("Select limits");
-		this.setSize(400,400);
+		this.setSize(400,600);
 		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		this.setLayout(new FlowLayout());
 		
@@ -1026,11 +1032,13 @@ class LimitSelecterFrame extends JFrame {
 		
 		this.run.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				System.out.println("Run action performed");
 				int rootLowerBound = Integer.parseInt(LimitSelecterFrame.this.rootLowerBound.getText());
 				int rootUpperBound = Integer.parseInt(LimitSelecterFrame.this.rootUpperBound.getText());
 				boolean useLimits = LimitSelecterFrame.this.printMatches.isSelected();
 				int minSliceNumber, maxSliceNumber, minValue, maxValue;
 				int minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY;
+				System.out.println("HERE!");
 				if (useLimits) {
 					minArea = Integer.parseInt(LimitSelecterFrame.this.minArea.getText());
 					maxArea = Integer.parseInt(LimitSelecterFrame.this.maxArea.getText());
@@ -1042,18 +1050,22 @@ class LimitSelecterFrame extends JFrame {
 					maxSliceNumber = Integer.parseInt(LimitSelecterFrame.this.maxSliceNumber.getText());
 					minValue = Integer.parseInt(LimitSelecterFrame.this.minValue.getText());
 					maxValue = Integer.parseInt(LimitSelecterFrame.this.maxValue.getText());
+					System.out.println("It was true, now about to run");
 					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits, 
 								minSliceNumber, maxSliceNumber, minValue, maxValue,
 								minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY);
 				}
 				else {
+					System.out.println("It was false, now about to run");
 					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits);
 				}
+				System.out.println("done in actionListener");
 			}
 		});
 		
 		this.printMatches.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				System.out.println("Toggling boxes.");
 				boolean selected = LimitSelecterFrame.this.printMatches.isSelected();
 				LimitSelecterFrame.this.minSliceNumber.setEnabled(selected);
 				LimitSelecterFrame.this.maxSliceNumber.setEnabled(selected);
@@ -1071,6 +1083,7 @@ class LimitSelecterFrame extends JFrame {
 				
 		this.add(run);
 		this.setVisible(true);
+		System.out.println("Made it visible!");
 	}
 }
 	
