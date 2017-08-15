@@ -436,21 +436,72 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	//These aren't consistent with what I expected... How can there be 2 at length 142, but only 1 at length 141?
 	//need to fix this I suppose.
 	//Then I can get to visualising the results.
+	
 	public void findChainedClusters() {
-		
-		/*System.out.println("begin findChainedClusters()");
-		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
+		HashMap<Integer, Integer> chainLengths = new HashMap<Integer, Integer>();
+		int stackSize = this.image.getStackSize();
+		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
 			DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
-			ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
-			Set<Cluster> valuesSet = new HashSet<Cluster>(connectedClusters.values());
-			System.out.println("valuesList " + valuesList.size());
-			System.out.println("valuesSet " + valuesSet.size());
-			if (valuesList.size() != valuesSet.size()) {
-				System.out.println("On slice " + sliceNumber + ", valuesList: " + valuesList.size() + ", valuesSet: " + valuesSet.size());
+			
+			Iterator<Map.Entry<Cluster, Cluster>> firstConnectionIterator = connectedClusters.entrySet().iterator();
+			ArrayList<Cluster> chain;
+			while (firstConnectionIterator.hasNext()) {
+				Map.Entry<Cluster, Cluster> firstEntry =  firstConnectionIterator.next();
+				Cluster firstKey = firstEntry.getKey();
+				Cluster value = firstEntry.getValue();
+				Cluster key = firstKey;
+				chain = new ArrayList<Cluster>();
+				do {
+					chain.add(key);
+					if (key.getSliceNumber() == stackSize) {
+						//there can be no cluster 'value'.
+						break;
+					}
+					if (key.getSliceNumber() == sliceNumber) {
+						//this is on the first key, so must be removed using the iterator method.
+						firstConnectionIterator.remove();
+					}
+					else {
+						value = pairedClustersBySlice.get(key.getSliceNumber()).remove(key);
+					}
+					key = value;
+				}
+				while (key != null);
+				
+				int chainLength = chain.size();
+				if (chainLengths.containsKey(chainLength)) {
+					chainLengths.put(chainLength, chainLengths.get(chainLength) + 1);
+				}
+				else {
+					chainLengths.put(chainLength, 1);
+				}
+				
+				if (chainLength > Color_Segmenter.minClusterChainLength) {
+					highlight(chain);
+				}
 			}
 		}
-		System.out.println("finished findChainedClusters");
-		*/
+		System.out.println("Chain lengths: " + chainLengths);
+	}
+				
+				
+	
+	
+	/*public void findChainedClusters() {
+		
+		//System.out.println("begin findChainedClusters()");
+		//for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
+		//	DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
+		//	ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
+		//	Set<Cluster> valuesSet = new HashSet<Cluster>(connectedClusters.values());
+		//	System.out.println("valuesList " + valuesList.size());
+		//	System.out.println("valuesSet " + valuesSet.size());
+		//	if (valuesList.size() != valuesSet.size()) {
+		//		System.out.println("On slice " + sliceNumber + ", valuesList: " + valuesList.size() + ", valuesSet: " + valuesSet.size());
+		//	}
+		//}
+		//System.out.println("finished findChainedClusters");
+		
 		
 		HashMap<Integer, Integer> clusterLengths = new HashMap<Integer, Integer>();
 		int stackSize = this.image.getStackSize();
@@ -496,11 +547,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 		}
 		
 		System.out.println("Cluster lengths: " + clusterLengths); //TODO why is this wrong?
-	}
+	}*/
 
 	public void highlight(ArrayList<Cluster> clusters) {
+		System.out.println("----------------------Highlighting a new chain!-----------------");
+		System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
 		int whiteColour = 255;
 		for (Cluster c : clusters) {
+			//System.out.println(c);
 			ImageProcessor sliceProcessor = this.image.getStack().getProcessor(c.getSliceNumber());
 			byte[] pixels = (byte[]) sliceProcessor.getPixels();
 			
