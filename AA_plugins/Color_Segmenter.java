@@ -68,6 +68,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	}
 	
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits) {
+		this.updateImage();
 		if (useLimits) {
 			System.err.println("ERROR: useLimits can't be true here.");
 		}
@@ -83,6 +84,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits, int minSliceNumber,
 	int maxSliceNumber, int minValue, int maxValue, int minArea, int maxArea, int minCenterX,
 	int maxCenterX, int minCenterY, int maxCenterY) {
+		this.updateImage();
 		if (!useLimits) {
 			System.err.println("ERROR: useLimits can't be false here.");
 		}

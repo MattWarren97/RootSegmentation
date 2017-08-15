@@ -57,6 +57,15 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 	public void showAbout() {
 
 	}
+	public void updateImage() {
+		ImagePlus currentImage = WindowManager.getCurrentImage();
+		if (currentImage == null) {
+			System.err.println("current image is null - failed.");
+			return;
+		}
+		System.out.println("Running setup with image of size: " + currentImage.getStackSize());
+		this.setup("", currentImage);
+	}
 	
 	
 }
