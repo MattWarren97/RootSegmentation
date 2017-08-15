@@ -4,6 +4,8 @@ import ij.*; //   \\Cseg_2\erc\ADMIN\Programmes\Fiji_201610_JAVA8.app\jars\ij-1.
 import ij.plugin.filter.PlugInFilter;
 import ij.process.*;
 import java.awt.*;
+import javax.swing.*;
+import java.awt.event.*;
 import java.util.Arrays;
 import ij.macro.Interpreter;
 import ij.plugin.*;
@@ -55,8 +57,51 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
 	
 	//multithreaded run version
+	boolean useLimits;
+	int minSliceNumber, maxSliceNumber, minValue, maxValue, minArea, maxArea;
+	int minCenterX, maxCenterX, minCenterY, maxCenterY;
+	
 	public void run(ImageProcessor ip) {
-		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //does this need to be synchronised?
+		new LimitSelecterFrame(this);
+	}
+	
+	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits) {
+		if (useLimits) {
+			System.err.println("ERROR: useLimits can't be true here.");
+		}
+		ObjectFinder.rootLowerBound = rootLowerBound;
+		ObjectFinder.rootUpperBound = rootUpperBound;
+		this.useLimits = false;
+		
+		this.run();
+	}
+	
+	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits, int minSliceNumber,
+	int maxSliceNumber, int minValue, int maxValue, int minArea, int maxArea, int minCenterX,
+	int maxCenterX, int minCenterY, int maxCenterY) {
+		if (!useLimits) {
+			System.err.println("ERROR: useLimits can't be false here.");
+		}
+		ObjectFinder.rootLowerBound = rootLowerBound;
+		ObjectFinder.rootUpperBound = rootUpperBound;
+		this.useLimits = true;
+		this.minSliceNumber = minSliceNumber;
+		this.maxSliceNumber = maxSliceNumber;
+		this.minValue = minValue;
+		this.maxValue = maxValue;
+		this.minArea = minArea;
+		this.maxArea = maxArea;
+		this.minCenterX = minCenterX;
+		this.maxCenterX = maxCenterX;
+		this.minCenterY = minCenterY;
+		this.maxCenterY = maxCenterY;
+		
+		this.run();
+	}
+						
+		
+	public void run() {
+		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //TODO does this need to be synchronised?
 		this.pairedClustersBySlice = new HashMap<Integer, DualHashBidiMap<Cluster, Cluster>>();
 		
 		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
@@ -128,12 +173,16 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 				//System.out.println("Clusters1 size: " + clusters1.size());
 				for (Cluster c1: clusters1) {
 					boolean isInteresting = false;
-					if (sliceNumber >= 33 && sliceNumber < 53) {
-						if (c1.center[0] >= 210 && c1.center[0] < 240) {
-							if (c1.center[1] >= 265 && c1.center[1] < 295) {
-								if (c1.value >= 16 && c1.value < 24) {
-									isInteresting = true;
-									System.out.println("Potential cluster - " + c1);
+					if (this.useLimits) {
+						if (sliceNumber >= this.minSliceNumber && sliceNumber <= this.maxSliceNumber) {
+							if (c1.center[0] >= this.minCenterX && c1.center[0] <= this.maxCenterX) {
+								if (c1.center[1] >= this.minCenterY && c1.center[1] <= this.maxCenterY) {
+									if (c1.getArea() >= this.minArea && c1.getArea() <= this.maxArea) {
+										if (c1.value >= this.minValue && c1.value <= this.maxValue) {
+											isInteresting = true;
+											System.out.println("Potential cluster - " + c1);
+										}
+									}
 								}
 							}
 						}
@@ -209,12 +258,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						else {
 							//simple case
 							if (isInteresting) {
-								System.out.println("Matched with " + bestCluster);
+								System.out.println("Have matched up: " + c1 + bestCluster);
 							}
 							connectedClusters.put(c1, bestCluster);
-							//if (c1.getArea() > 2000 && c1.getArea() < 10000) {
-							System.out.println("Have matched up: " + c1 + bestCluster);
-							//}
 						}
 					}
 						
@@ -607,8 +653,8 @@ class ObjectFinder implements Runnable {
 	ImageStack stack;
 	Color_Segmenter cs;
 	
-	static int rootLowerBound = 0;
-	static int rootUpperBound = 32;
+	static int rootLowerBound = 8;
+	static int rootUpperBound = 25;
 	static int clusterDeviation = 1;
 	int count;
 	int xMin, yMin, xMax, yMax;
@@ -884,3 +930,147 @@ class ObjectFinder implements Runnable {
 	}
 		
 }
+
+class LimitSelecterFrame extends JFrame {
+	Color_Segmenter cs;
+	JButton run;
+	JTextField rootLowerBound;
+	JTextField rootUpperBound;
+	JCheckBox printMatches;
+	
+	JTextField minSliceNumber;
+	JTextField maxSliceNumber;
+	JTextField minValue;
+	JTextField maxValue;
+	JTextField minCenterX;
+	JTextField minCenterY;
+	JTextField maxCenterX;
+	JTextField maxCenterY;
+	JTextField minArea, maxArea;
+	
+	public LimitSelecterFrame(Color_Segmenter cs) {
+		this.cs = cs;
+		
+		this.setTitle("Select limits");
+		this.setSize(400,400);
+		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		this.setLayout(new FlowLayout());
+		
+		this.add(new JLabel("Root lower bound (5 bit)"));
+		this.rootLowerBound = new JTextField("0", 3);
+		this.add(rootLowerBound);
+		
+		this.add(new JLabel("Root upper bound (5 bit)"));
+		this.rootUpperBound = new JTextField("32", 3);
+		this.add(rootUpperBound);
+		
+		this.printMatches = new JCheckBox("Print matches?", false);
+		this.add(printMatches);
+		
+		JPanel limitPanel = new JPanel();
+		limitPanel.setLayout(new BoxLayout(limitPanel, BoxLayout.Y_AXIS));
+		this.add(limitPanel);
+		
+	
+		limitPanel.add(new JLabel("min slice number"));
+		this.minSliceNumber = new JTextField("0", 3);
+		this.minSliceNumber.setEnabled(false);
+		limitPanel.add(minSliceNumber);
+		
+		limitPanel.add(new JLabel("max slice number"));
+		this.maxSliceNumber = new JTextField("0", 3);
+		this.maxSliceNumber.setEnabled(false);
+		limitPanel.add(maxSliceNumber);
+		
+		limitPanel.add(new JLabel("min value"));
+		this.minValue = new JTextField("0", 3);
+		this.minValue.setEnabled(false);
+		limitPanel.add(minValue);
+		
+		limitPanel.add(new JLabel("maxValue"));
+		this.maxValue = new JTextField("0", 3);
+		this.maxValue.setEnabled(false);
+		limitPanel.add(maxValue);
+		
+		limitPanel.add(new JLabel("minArea"));
+		this.minArea = new JTextField("0", 3);
+		this.minArea.setEnabled(false);
+		limitPanel.add(minArea);
+		
+		limitPanel.add(new JLabel("maxArea"));
+		this.maxArea = new JTextField("0", 3);
+		this.maxArea.setEnabled(false);
+		limitPanel.add(maxArea);
+		
+		limitPanel.add(new JLabel("minCenterX"));
+		this.minCenterX = new JTextField("0", 3);
+		this.minCenterX.setEnabled(false);
+		limitPanel.add(minCenterX);
+		
+		limitPanel.add(new JLabel("maxCenterX"));
+		this.maxCenterX = new JTextField("0", 3);
+		this.maxCenterX.setEnabled(false);
+		limitPanel.add(maxCenterX);
+		
+		limitPanel.add(new JLabel("minCenterY"));
+		this.minCenterY = new JTextField("0", 3);
+		this.minCenterY.setEnabled(false);
+		limitPanel.add(minCenterY);
+		
+		limitPanel.add(new JLabel("maxCenterY"));
+		this.maxCenterY = new JTextField("0", 3);
+		this.maxCenterY.setEnabled(false);
+		limitPanel.add(maxCenterY);
+		
+		this.run = new JButton("RUN");
+		
+		this.run.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int rootLowerBound = Integer.parseInt(LimitSelecterFrame.this.rootLowerBound.getText());
+				int rootUpperBound = Integer.parseInt(LimitSelecterFrame.this.rootUpperBound.getText());
+				boolean useLimits = LimitSelecterFrame.this.printMatches.isSelected();
+				int minSliceNumber, maxSliceNumber, minValue, maxValue;
+				int minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY;
+				if (useLimits) {
+					minArea = Integer.parseInt(LimitSelecterFrame.this.minArea.getText());
+					maxArea = Integer.parseInt(LimitSelecterFrame.this.maxArea.getText());
+					minCenterX = Integer.parseInt(LimitSelecterFrame.this.minCenterX.getText());
+					maxCenterX = Integer.parseInt(LimitSelecterFrame.this.maxCenterX.getText());
+					minCenterY = Integer.parseInt(LimitSelecterFrame.this.minCenterY.getText());
+					maxCenterY = Integer.parseInt(LimitSelecterFrame.this.maxCenterY.getText());
+					minSliceNumber = Integer.parseInt(LimitSelecterFrame.this.minSliceNumber.getText());
+					maxSliceNumber = Integer.parseInt(LimitSelecterFrame.this.maxSliceNumber.getText());
+					minValue = Integer.parseInt(LimitSelecterFrame.this.minValue.getText());
+					maxValue = Integer.parseInt(LimitSelecterFrame.this.maxValue.getText());
+					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits, 
+								minSliceNumber, maxSliceNumber, minValue, maxValue,
+								minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY);
+				}
+				else {
+					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits);
+				}
+			}
+		});
+		
+		this.printMatches.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				boolean selected = LimitSelecterFrame.this.printMatches.isSelected();
+				LimitSelecterFrame.this.minSliceNumber.setEnabled(selected);
+				LimitSelecterFrame.this.maxSliceNumber.setEnabled(selected);
+				LimitSelecterFrame.this.minValue.setEnabled(selected);
+				LimitSelecterFrame.this.maxValue.setEnabled(selected);
+				LimitSelecterFrame.this.minArea.setEnabled(selected);
+				LimitSelecterFrame.this.maxArea.setEnabled(selected);
+				LimitSelecterFrame.this.minCenterX.setEnabled(selected);
+				LimitSelecterFrame.this.maxCenterX.setEnabled(selected);
+				LimitSelecterFrame.this.minCenterY.setEnabled(selected);
+				LimitSelecterFrame.this.maxCenterY.setEnabled(selected);
+			}
+		});
+				
+				
+		this.add(run);
+		this.setVisible(true);
+	}
+}
+	

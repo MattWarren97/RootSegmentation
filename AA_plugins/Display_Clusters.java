@@ -401,10 +401,10 @@ public class Display_Clusters extends SegmentationPlugin {
 }
 
 class ValueSelectFrame extends JFrame {
-	JButton run;
+
 	ImageProcessor ip;
 	Display_Clusters dc;
-	JLabel clusterValueLabel;
+	JButton run;
 	JTextField clusterValueInput;
 	
 	public ValueSelectFrame(ImageProcessor ip, Display_Clusters dc) {
@@ -416,7 +416,7 @@ class ValueSelectFrame extends JFrame {
 		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		this.setLayout(new FlowLayout());
 		
-		this.clusterValueLabel = new JLabel("Select cluster value to display");
+		JLabel clusterValueLabel = new JLabel("Select cluster value to display");
 		this.add(clusterValueLabel);
 		this.clusterValueInput = new JTextField("0");
 		this.clusterValueInput.setColumns(3);
