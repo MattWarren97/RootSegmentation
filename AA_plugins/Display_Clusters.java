@@ -26,7 +26,7 @@ import org.apache.commons.collections4.bidimap.*;
 import java.util.*;
 
 
-public class Display_Clusters extends SegmentationPlugin {
+public class Display_Clusters extends SegmentationPlugin implements Runnable{
 	
 	Point[][] points;
 	HashMap<Integer, ArrayList<Cluster>> clusterValue_clusters_MAP;
@@ -45,6 +45,11 @@ public class Display_Clusters extends SegmentationPlugin {
 	
 	public void run(int clusterValue) {
 		this.clusterValue = clusterValue;
+		Thread t = new Thread(this);
+		t.start();
+	}
+	
+	public void run() {
 		xMin = 0;
 		yMin = 0;
 		xMax = this.X-1;
