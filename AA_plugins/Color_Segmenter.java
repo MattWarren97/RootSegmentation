@@ -116,10 +116,12 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 			connectedClusters = new DualHashBidiMap<Cluster, Cluster>();
 			
 			for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-						clusterValue < ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; 
+						clusterValue <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; 
 								clusterValue++) 
 			{
+				//map for the current slice.
 				HashMap<Integer, ArrayList<Cluster>> current_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
+				//map for the next slice.
 				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
 				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
 				
@@ -151,9 +153,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 						}
 						
 						ArrayList<Cluster> clusters2 = next_clusterValue_clusters_MAP.get(nextClusterValue);
-						if (clusters2.isEmpty()) {
-							System.out.println(sliceNumber + ", " + nextClusterValue + " has empty clusters2");
-						}
+						//if (clusters2.isEmpty()) {
+						//	System.out.println(sliceNumber + ", " + nextClusterValue + " has an empty list to try to match with. clusters2, from clusterValue: " + clusterValue);
+						//}
 						//System.out.println("clusters2 List length is " + clusters2.size());
 						//Set clusters2Set = new HashSet(clusters2);
 						//System.out.println("clusters2 set length is " + clusters2Set.size());
@@ -210,7 +212,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 								System.out.println("Matched with " + bestCluster);
 							}
 							connectedClusters.put(c1, bestCluster);
+							//if (c1.getArea() > 2000 && c1.getArea() < 10000) {
 							System.out.println("Have matched up: " + c1 + bestCluster);
+							//}
 						}
 					}
 						
@@ -588,7 +592,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter 
 
 		float areaDifference = (float) Math.abs((c1.area - c2.area)/(c1.area + c2.area));
 
-		float comparison = (-colourDifference*colourDifferenceWeight) + aspectRatioChange*aspectRatioDifferenceWeight + areaDifference*areaDifferenceWeight;
+		float comparison = (colourDifference*colourDifferenceWeight) + (aspectRatioChange*aspectRatioDifferenceWeight) + (areaDifference*areaDifferenceWeight);
 		return comparison;
 	}
 
@@ -734,6 +738,9 @@ class ObjectFinder implements Runnable {
 		processed = new HashSet<Point>();		
 		while(pointsAtValue.size() != 0) {
 			Point nextPoint = pointsAtValue.remove(0);
+			//if (sliceNumber == 1 && pixelValue == 3) {
+			//	System.out.println("Slice: " + sliceNumber + ", Looking at point " + nextPoint);
+			//}
 			if (processed.contains(nextPoint)) {
 				System.out.println(nextPoint + " has already been processed!");
 				continue;
@@ -769,6 +776,13 @@ class ObjectFinder implements Runnable {
 			}
 			//System.out.println("sameClusterToBeProcessed is empty!");
 			clustersAtValue.add(currentCluster);
+			//if (sliceNumber == 1 && pixelValue == 3) {
+			//	System.out.println("Slice: " + sliceNumber + ", size was " + currentCluster.getArea() + ", initialPoint was " + currentCluster.points.get(0));
+			//	
+			//	try {
+			//		Thread.sleep(1000);
+			//	} catch (Exception e) {}
+			//}
 			//if (sliceNumber == 1) {
 			//	System.out.println("Cluster added with size " + currentCluster.getArea());
 			//}
