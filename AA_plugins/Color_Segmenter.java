@@ -217,8 +217,16 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 						//Set clusters2Set = new HashSet(clusters2);
 						//System.out.println("clusters2 set length is " + clusters2Set.size());
 					
+						if (isInteresting) {
+							System.out.println("Now considering the cluster\n" + c1);
+						}
 						for (Cluster c2 : clusters2) {
-							Float difference = compareClusters(c1, c2);
+							Float difference = compareClusters(c1, c2, isInteresting);
+							if (isInteresting) {
+								if (c2.getArea() > 50) {
+									System.out.println("Difference of " + difference + " with\n" + c2);
+								}
+							}
 							if (difference == null) {
 								//clusters are too far apart to attempt joining...
 								continue;
@@ -242,7 +250,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 							Cluster otherC1 = connectedClusters.getKey(bestCluster);
 							//System.out.println("otherc1 is " + otherC1);
 							Float c1DiffBest = minDifference;
-							Float otherC1DiffBest = compareClusters(otherC1, bestCluster);
+							Float otherC1DiffBest = compareClusters(otherC1, bestCluster, isInteresting);
 							//System.out.println("c1; otherc1 - " + c1DiffBest + "; " + otherC1DiffBest);
 							if (c1DiffBest < otherC1DiffBest) {
 								//System.out.println("c1 better!");
@@ -414,6 +422,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		backPropagate(startSlice-1);
 	}
 	
+	//return true if the two clusters are centered close enough to each other to be compared.
 	public boolean canCompareClusters(Cluster c1, Cluster c2) {
 		if (Math.abs(c1.value-c2.value) > Color_Segmenter.maximumColourDifference) {
 			return false;
@@ -633,8 +642,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			
 		}
 	}
-
 	public Float compareClusters(Cluster c1, Cluster c2) {
+		return this.compareClusters(c1, c2, false);
+	}
+	public Float compareClusters(Cluster c1, Cluster c2, boolean isInteresting) {
 		//System.out.println(c1.calculatedValues + ", " + c2.calculatedValues);
 		if (!(c1.calculatedValues && c2.calculatedValues)) {
 			System.out.println("c1: z-"+ c1.z + ", val-" + c1.value + " " + c1.calculatedValues);
@@ -653,10 +664,16 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		float colourDifference = (float) Math.abs(c1.value - c2.value);
 		float aspectRatioChange = (float) Math.abs((c1.aspectRatio - c2.aspectRatio)/(c1.aspectRatio + c2.aspectRatio));
 		//changed areaDiference -- now divides by c1+c2 -- because otherwise it seems inconsitent TODO.
+		float c1Area = (float) c1.area;
+		float c2Area = (float) c2.area;
+		float areaDifference = (float) Math.abs((c1Area - c2Area)/(c1Area + c2Area));
 
-		float areaDifference = (float) Math.abs((c1.area - c2.area)/(c1.area + c2.area));
-
+		
 		float comparison = (colourDifference*colourDifferenceWeight) + (aspectRatioChange*aspectRatioDifferenceWeight) + (areaDifference*areaDifferenceWeight);
+		if (isInteresting) {
+			System.out.println("AreaDiff: " + areaDifference + ", colourDiff: " + colourDifference + ", aspectDiff: " + aspectRatioChange);
+			System.out.println("Gives a final score of " + comparison);
+		}
 		return comparison;
 	}
 
