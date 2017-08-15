@@ -44,8 +44,8 @@ public class Cluster {
 		String toReturn = "Cluster center at (" + ((int) this.center[0]) + "," + ((int) this.center[1]) + "," + this.z + ") - ";
 		toReturn = toReturn + " with Area: " + area;
 		toReturn = toReturn + ", AspectRatio: " + aspectRatio;
-		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
 		toReturn = toReturn + ", Value: " + value;
+		toReturn = toReturn + ", Center: " + this.center[0] + "," + this.center[1];
 		toReturn = toReturn + ", initialPoint: " + this.points.get(0);
 		return toReturn+"\n";
 	}

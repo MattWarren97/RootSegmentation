@@ -235,7 +235,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 						//There is some cluster c2 that fits the criteria for c1 to match with c2.
 						
 						if (connectedClusters.containsValue(bestCluster)) {
-							//System.out.println("Ok - there is a duplicate mapping to bestCluster!");
+							
 							//then some other cluster also mapped to best cluster. This can't be allowed.
 							//System.out.println("bestCluster is " + bestCluster);
 							//System.out.println("c1 is " + c1);
@@ -251,14 +251,19 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 								connectedClusters.remove(otherC1);
 								connectedClusters.put(c1, bestCluster);
 								if (isInteresting) {
-									System.out.println("Matched with " + bestCluster);
-
+									System.out.println("This is a better match than previous pairing!");
+									System.out.println("Matched to\n" + bestCluster);
+									System.out.println("Old pairing was from\n" + otherC1);
 								}
 								prepareToBackPropagate(c1, otherC1);
 							}
 							else {
 								//System.out.println("otherC1Best");
 								//otherC1 is the best match for bestCluster.
+								if (isInteresting) {
+									System.out.println("Old matched pairing was better for the target cluster than this.");
+									System.out.println("The match is " + otherC1 + "with\n" + bestCluster);
+								}
 								prepareToBackPropagate(otherC1, c1);
 							}
 
@@ -269,6 +274,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 								System.out.println("Have matched up: " + c1 + bestCluster);
 							}
 							connectedClusters.put(c1, bestCluster);
+						}
+					}
+					else {
+						if (isInteresting) {
+							System.out.println("Unfortunately no matching clusters found");
 						}
 					}
 						
