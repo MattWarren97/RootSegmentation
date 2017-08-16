@@ -49,7 +49,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 
 	HashMap<Integer, ArrayList<Cluster>> sliceClusterMap;
 	HashMap<Integer, Integer> differenceCounts;
-	HashMap<Integer, DualHashBidiMap<Cluster, Cluster>> pairedClustersBySlice;
+	HashMap<Integer, HashMap<Cluster, Cluster>> pairedClustersBySlice;
 	HashMap<Cluster, Cluster> replacements;
 	
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
@@ -110,7 +110,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		
 	public void run() {
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //TODO does this need to be synchronised?
-		this.pairedClustersBySlice = new HashMap<Integer, DualHashBidiMap<Cluster, Cluster>>();
+		this.pairedClustersBySlice = new HashMap<Integer, HashMap<Cluster, Cluster>>();
 		
 		this.sliceNumber_clusterValue_clusters_MAP = new HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>>();
 		
@@ -162,23 +162,22 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	}
 	
 	public void findConnectedClusters() {
-		DualHashBidiMap<Cluster, Cluster> connectedClusters;
+		HashMap<Cluster, Cluster> connectedClusters;
+		
 		System.out.println("started findConnectedClusters");
-		for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
-			//System.out.println("Started connecting clusters on " + sliceNumber);
-			connectedClusters = new DualHashBidiMap<Cluster, Cluster>();
+		for (sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
+			connectedClusters = new HashMap<Cluster, Cluster>();
 			
+			//maps for the current slice and for the next slice.
+			HashMap<Integer, ArrayList<Cluster>> current_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
+			HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
+
 			for (int clusterValue = ObjectFinder.rootLowerBound + ObjectFinder.clusterDeviation;
-						clusterValue <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation; 
-								clusterValue++) 
+					clusterValue <= ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation;
+							clusterValue++)
 			{
-				//map for the current slice.
-				HashMap<Integer, ArrayList<Cluster>> current_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber);
-				//map for the next slice.
-				HashMap<Integer, ArrayList<Cluster>> next_clusterValue_clusters_MAP = sliceNumber_clusterValue_clusters_MAP.get(sliceNumber+1);
 				ArrayList<Cluster> clusters1 = current_clusterValue_clusters_MAP.get(clusterValue);
 				
-				//System.out.println("Clusters1 size: " + clusters1.size());
 				for (Cluster c1: clusters1) {
 					boolean isInteresting = false;
 					if (this.useLimits) {
@@ -206,35 +205,29 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 						if (nextClusterValue < ObjectFinder.rootLowerBound+ObjectFinder.clusterDeviation ||
 									nextClusterValue > ObjectFinder.rootUpperBound - ObjectFinder.clusterDeviation)
 						{
-							//System.out.println("No clusters at value " + nextClusterValue + " - continuing");
 							continue;
 						}
 						
 						ArrayList<Cluster> clusters2 = next_clusterValue_clusters_MAP.get(nextClusterValue);
-						//if (clusters2.isEmpty()) {
-						//	System.out.println(sliceNumber + ", " + nextClusterValue + " has an empty list to try to match with. clusters2, from clusterValue: " + clusterValue);
-						//}
-						//System.out.println("clusters2 List length is " + clusters2.size());
-						//Set clusters2Set = new HashSet(clusters2);
-						//System.out.println("clusters2 set length is " + clusters2Set.size());
-						
 						
 						if (printDifferences) {
 							System.out.println("Now considering the cluster\n" + c1);
 						}
-						for (Cluster c2 : clusters2) {
+						
+						for (Cluster c2: clusters2) {
 							Float difference = compareClusters(c1, c2, printDifferences);
+							if (difference == null) {
+								//clusters are too far apart to attempt joining...
+								continue;
+							}
 							if (printDifferences) {
 								if (c2.getArea() > 50) {
 									System.out.println("Difference of " + difference + " with\n" + c2);
 								}
 							}
-							if (difference == null) {
-								//clusters are too far apart to attempt joining...
-								continue;
-							}
+							
 							if (difference < minDifference || minDifference == -1) {
-								//either no cluster has yet set a difference 'mark', or some other cluster has and this c2 bettered it.
+								//either this has the best difference, or no other cluster set a 'mark' yet.
 								minDifference = difference;
 								bestCluster = c2;
 							}
@@ -242,192 +235,24 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 					}
 					
 					if (minDifference != -1) {
-						//There is some cluster c2 that fits the criteria for c1 to match with c2.
-						
-						if (connectedClusters.containsValue(bestCluster)) {
-							
-							//then some other cluster also mapped to best cluster. This can't be allowed.
-							//System.out.println("bestCluster is " + bestCluster);
-							//System.out.println("c1 is " + c1);
-							Cluster otherC1 = connectedClusters.getKey(bestCluster);
-							//System.out.println("otherc1 is " + otherC1);
-							Float c1DiffBest = minDifference;
-							Float otherC1DiffBest = compareClusters(otherC1, bestCluster, printDifferences);
-							//System.out.println("c1; otherc1 - " + c1DiffBest + "; " + otherC1DiffBest);
-							if (c1DiffBest < otherC1DiffBest) {
-								//System.out.println("c1 better!");
-								//c1 is the best match for bestCluster --
-								//remove the old association, add the new association, and prepare the 'back-propagation' of this change.
-								connectedClusters.remove(otherC1);
-								connectedClusters.put(c1, bestCluster);
-								if (isInteresting) {
-									System.out.println("This is a better match than previous pairing!");
-									System.out.println("Matched to\n" + bestCluster);
-									System.out.println("Old pairing was from\n" + otherC1);
-								}
-								prepareToBackPropagate(c1, otherC1);
-							}
-							else {
-								//System.out.println("otherC1Best");
-								//otherC1 is the best match for bestCluster.
-								if (isInteresting) {
-									System.out.println("Old matched pairing was better for the target cluster than this.");
-									System.out.println("The match is " + otherC1 + "with\n" + bestCluster);
-								}
-								prepareToBackPropagate(otherC1, c1);
-							}
-
-						}
-						else {
-							//simple case
-							if (isInteresting) {
-								System.out.println("Have matched up: " + c1 + bestCluster);
-							}
-							connectedClusters.put(c1, bestCluster);
+						//There is some cluster c2 that is the best fit for c1!
+						connectedClusters.put(c1, bestCluster);
+						if (isInteresting) {
+							System.out.println("Have matched up " + c1 + bestCluster);
 						}
 					}
 					else {
 						if (isInteresting) {
-							System.out.println("Unfortunately no matching clusters found");
+							System.out.println("Unfortunately no suitable matching clusters were found");
 						}
 					}
-						
 				}
 			}
 			System.out.println("finished connections starting from slice " + sliceNumber);
 			pairedClustersBySlice.put(sliceNumber, connectedClusters);
-			backPropagate(sliceNumber);
 		}
 	}
-	
 
-	
-	public void prepareToBackPropagate(Cluster replacement, Cluster replaced) {
-		if (this.replacements == null) {
-			this.replacements = new HashMap<Cluster, Cluster>();
-		}
-		this.replacements.put(replaced, replacement);
-	}
-	
-	public void backPropagate(int startSlice) {
-		//System.out.println("Starting backPropagating on " + startSlice + " size of replacements: " + this.replacements.size());
-		//if there si nothing to backPropagate, then does nothing.
-		if (this.replacements == null) {
-			//System.out.println("replacements was null on slice " + startSlice);
-			return;
-		}
-		if (this.replacements.size() == 0) {
-			System.out.println("Finished back propagating -- nothing to propagate back");
-			return;
-		}
-		
-		//if looking at slice 1, then no 'prevConnectedClusters' will remain -- need to sort this out separately.
-		if (startSlice == 1) { 
-			//there ought to be nothing to do.
-			System.out.println("Finished back propagating due to reaching slice 1");
-			
-			return;
-		}
-		
-		//otherwise
-		//System.out.println("Got through those initial checks");
-		DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(startSlice);
-		DualHashBidiMap<Cluster, Cluster> prevConnectedClusters = pairedClustersBySlice.get(startSlice - 1);
-		
-		HashMap<Cluster, Cluster> replacements = new HashMap<Cluster, Cluster>(this.replacements);
-		this.replacements = null;
-		Iterator<Cluster> it = replacements.keySet().iterator();
-		//System.out.println("About to begin while loop");
-		while(it.hasNext()) {
-			Cluster replaced = it.next();
-			//System.out.println("Replaced: " + replaced);
-			
-			Cluster replacement = replacements.get(replaced);
-			
-			//System.out.println("Replacement: " + replacement);
-			
-			//System.out.println(replaced == replacement);
-			
-			//what if A replaces C, but D then replaces A? 
-			//System.out.println("replacement: " + replacement);
-			while (replacements.containsKey(replacement)) {
-				replacement = replacements.get(replacement);
-				//System.out.println("replacement: " + replacement);
-				//System.out.println(replacements);
-				//try {
-				//	Thread.sleep(1000);
-				//} catch (Exception e) {}
-			}
-			//System.out.println("Outside second while loop");
-			//TODO fix the iterator (to remove items).
-			
-			
-			//if 'replacement' replaces 'replaced', fancy back-propagation is only needed when:
-			//('preExistingReplacedKey'->'replaced') exists in the prevConnectedClusters.
-			if (prevConnectedClusters.containsValue(replaced)) {
-				
-				//System.out.println("A - true");
-				Cluster preExistingReplacedKey = prevConnectedClusters.getKey(replaced);
-				
-				//I want to set (preExistingReplacedKey -> replacement) as a pair [but can only do this if they meet certain conditions].
-				if(canCompareClusters(preExistingReplacedKey, replacement)) {
-					//System.out.println("B - true");
-					//It's possible that replacement already had a different key [another conflict would arise].
-					if (prevConnectedClusters.containsValue(replacement)) {
-						//System.out.println("C - true");
-						Cluster preExistingReplacementKey = prevConnectedClusters.getKey(replacement);
-						//then we will need to backPropagate further.
-						//Only one of [(preExistingReplacedKey -> replacement) & (preExistingReplacementKey -> replacement)] can be used.
-						
-						//TODO: comparing [preExistingReplacedKey, preExistingReplacementKey] vs. replacement..
-						// is pointless. We know that replacementKeyDiff will always be better.
-						
-						Float replacedKeyDiff = compareClusters(preExistingReplacedKey, replacement);
-						Float replacementKeyDiff = compareClusters(preExistingReplacementKey, replacement);
-						
-						if (replacedKeyDiff < replacementKeyDiff) {
-							//System.out.println("D - true");
-							//replacedKeyDiff is the best match for replacement.
-							//need to modify the prevConnectedClusters to reflect this, then propagate it back.
-							//prevConnectedClusters started with (preExistingReplacementKey -> replacement), 
-							//now needs to have (preExistingReplacedKey -> replacement), 
-							//and any occurences of 'preExistingReplacementKey' in the prevPrevConnectedClusters would need to be changed.
-							prevConnectedClusters.remove(preExistingReplacementKey);
-							prevConnectedClusters.put(preExistingReplacedKey, replacement);
-							prepareToBackPropagate(preExistingReplacedKey, preExistingReplacementKey);
-						}
-						else {
-							//System.out.println("D - false");
-							//replacementKeyDiff is still the best match for replacement.
-							//so no immediate changes to make here.
-							//need to backPropagate in case some (F->preExistingReplacedKey) exists that might need to be updated to:
-							//(F->preExistingReplacementKey)  [[in order to keep that chain going]].
-							prepareToBackPropagate(preExistingReplacementKey, preExistingReplacedKey);
-						}
-					}
-					else {
-						//System.out.println("C - false");
-						//if not, then we can end this chain of changes here.
-						//replace (preExistingReplacedKey -> replaced) with (preExistingReplacedKey -> replacement)
-						prevConnectedClusters.put(preExistingReplacedKey, replacement);
-					}
-					
-				}
-				else {
-					//System.out.println("B - false");
-					//if preExistingReplacedKey can't link to replacement, then nothing need be changed/
-					//(preExistingReplacedKey -> replaced) will remain in prevConnectedClusters.
-				}
-			}
-			
-			else {
-				//System.out.println("A - false");
-				//there is nothing to be done.
-			}
-		}
-		backPropagate(startSlice-1);
-	}
-	
 	//return true if the two clusters are centered close enough to each other to be compared.
 	public boolean canCompareClusters(Cluster c1, Cluster c2) {
 		if (Math.abs(c1.value-c2.value) > Color_Segmenter.maximumColourDifference) {
@@ -448,7 +273,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	public void displayClusterPairs() {
 		//System.out.println(pairedClustersBySlice);
-		DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
+		HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
 		ImageProcessor sliceOne = this.image.getStack().getProcessor(1);
 		ImageProcessor sliceTwo = this.image.getStack().getProcessor(2);
 		int count = 0;
@@ -524,7 +349,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		HashMap<Integer, Integer> chainLengths = new HashMap<Integer, Integer>();
 		int stackSize = this.image.getStackSize();
 		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
-			DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
+			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
 			
 			Iterator<Map.Entry<Cluster, Cluster>> firstConnectionIterator = connectedClusters.entrySet().iterator();
 			ArrayList<Cluster> chain;
