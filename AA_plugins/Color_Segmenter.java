@@ -25,8 +25,6 @@ import org.apache.commons.collections4.bidimap.*;
 import java.util.*;
 
 public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter, Runnable {
-	
-
 
 	static int[] lut;
 	static int minClusterSize = 20;
@@ -57,7 +55,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
 	
 	//multithreaded run version
-	boolean useLimits;
+	boolean useLimits, printDifferences;
 	int minSliceNumber, maxSliceNumber, minValue, maxValue, minArea, maxArea;
 	int minCenterX, maxCenterX, minCenterY, maxCenterY;
 	
@@ -75,6 +73,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		ObjectFinder.rootLowerBound = rootLowerBound;
 		ObjectFinder.rootUpperBound = rootUpperBound;
 		this.useLimits = false;
+		this.printDifferences = false;
 		
 		System.out.println("Now about to run!");
 		Thread t = new Thread(this);
@@ -83,7 +82,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits, int minSliceNumber,
 	int maxSliceNumber, int minValue, int maxValue, int minArea, int maxArea, int minCenterX,
-	int maxCenterX, int minCenterY, int maxCenterY) {
+	int maxCenterX, int minCenterY, int maxCenterY, boolean printDifferences) {
 		this.updateImage();
 		if (!useLimits) {
 			System.err.println("ERROR: useLimits can't be false here.");
@@ -101,6 +100,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		this.maxCenterX = maxCenterX;
 		this.minCenterY = minCenterY;
 		this.maxCenterY = maxCenterY;
+		this.printDifferences = printDifferences;
 		
 		System.out.println("Now about to run!");
 		Thread t = new Thread(this);
@@ -195,6 +195,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 							}
 						}
 					}
+					boolean printDifferences = isInteresting && this.printDifferences;
 					float minDifference = -1;
 					Cluster bestCluster = null;
 					for (int nextClusterValue = clusterValue - maximumColourDifference; 
@@ -216,13 +217,14 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 						//System.out.println("clusters2 List length is " + clusters2.size());
 						//Set clusters2Set = new HashSet(clusters2);
 						//System.out.println("clusters2 set length is " + clusters2Set.size());
-					
-						if (isInteresting) {
+						
+						
+						if (printDifferences) {
 							System.out.println("Now considering the cluster\n" + c1);
 						}
 						for (Cluster c2 : clusters2) {
-							Float difference = compareClusters(c1, c2, isInteresting);
-							if (isInteresting) {
+							Float difference = compareClusters(c1, c2, printDifferences);
+							if (printDifferences) {
 								if (c2.getArea() > 50) {
 									System.out.println("Difference of " + difference + " with\n" + c2);
 								}
@@ -250,7 +252,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 							Cluster otherC1 = connectedClusters.getKey(bestCluster);
 							//System.out.println("otherc1 is " + otherC1);
 							Float c1DiffBest = minDifference;
-							Float otherC1DiffBest = compareClusters(otherC1, bestCluster, isInteresting);
+							Float otherC1DiffBest = compareClusters(otherC1, bestCluster, printDifferences);
 							//System.out.println("c1; otherc1 - " + c1DiffBest + "; " + otherC1DiffBest);
 							if (c1DiffBest < otherC1DiffBest) {
 								//System.out.println("c1 better!");
@@ -972,6 +974,7 @@ class LimitSelecterFrame extends JFrame {
 	JTextField rootLowerBound;
 	JTextField rootUpperBound;
 	JCheckBox printMatches;
+	JCheckBox printDifferences;
 	
 	JTextField minSliceNumber;
 	JTextField maxSliceNumber;
@@ -1001,6 +1004,9 @@ class LimitSelecterFrame extends JFrame {
 		
 		this.printMatches = new JCheckBox("Print matches?", false);
 		this.add(printMatches);
+		this.printDifferences = new JCheckBox("Print differences?", false);
+		this.printDifferences.setEnabled(false);
+		this.add(printDifferences);
 		
 		JPanel limitPanel = new JPanel();
 		limitPanel.setLayout(new BoxLayout(limitPanel, BoxLayout.Y_AXIS));
@@ -1067,6 +1073,7 @@ class LimitSelecterFrame extends JFrame {
 				boolean useLimits = LimitSelecterFrame.this.printMatches.isSelected();
 				int minSliceNumber, maxSliceNumber, minValue, maxValue;
 				int minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY;
+				boolean printDifferences;
 				System.out.println("HERE!");
 				if (useLimits) {
 					minArea = Integer.parseInt(LimitSelecterFrame.this.minArea.getText());
@@ -1079,10 +1086,12 @@ class LimitSelecterFrame extends JFrame {
 					maxSliceNumber = Integer.parseInt(LimitSelecterFrame.this.maxSliceNumber.getText());
 					minValue = Integer.parseInt(LimitSelecterFrame.this.minValue.getText());
 					maxValue = Integer.parseInt(LimitSelecterFrame.this.maxValue.getText());
+					
+					printDifferences = LimitSelecterFrame.this.printDifferences.isSelected();
 					System.out.println("It was true, now about to run");
 					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits, 
 								minSliceNumber, maxSliceNumber, minValue, maxValue,
-								minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY);
+								minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY, printDifferences);
 				}
 				else {
 					System.out.println("It was false, now about to run");
@@ -1106,6 +1115,7 @@ class LimitSelecterFrame extends JFrame {
 				LimitSelecterFrame.this.maxCenterX.setEnabled(selected);
 				LimitSelecterFrame.this.minCenterY.setEnabled(selected);
 				LimitSelecterFrame.this.maxCenterY.setEnabled(selected);
+				LimitSelecterFrame.this.printDifferences.setEnabled(selected);
 			}
 		});
 				
