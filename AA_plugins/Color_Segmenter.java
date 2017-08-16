@@ -378,6 +378,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 						Cluster preExistingReplacementKey = prevConnectedClusters.getKey(replacement);
 						//then we will need to backPropagate further.
 						//Only one of [(preExistingReplacedKey -> replacement) & (preExistingReplacementKey -> replacement)] can be used.
+						
+						//TODO: comparing [preExistingReplacedKey, preExistingReplacementKey] vs. replacement..
+						// is pointless. We know that replacementKeyDiff will always be better.
+						
 						Float replacedKeyDiff = compareClusters(preExistingReplacedKey, replacement);
 						Float replacementKeyDiff = compareClusters(preExistingReplacementKey, replacement);
 						
