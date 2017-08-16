@@ -824,11 +824,11 @@ class LimitSelecterFrame extends JFrame {
 		this.setLayout(new FlowLayout());
 		
 		this.add(new JLabel("Root lower bound (5 bit)"));
-		this.rootLowerBound = new JTextField("0", 3);
+		this.rootLowerBound = new JTextField("", 3);
 		this.add(rootLowerBound);
 		
 		this.add(new JLabel("Root upper bound (5 bit)"));
-		this.rootUpperBound = new JTextField("32", 3);
+		this.rootUpperBound = new JTextField("", 3);
 		this.add(rootUpperBound);
 		
 		this.printMatches = new JCheckBox("Print matches?", false);
@@ -843,52 +843,52 @@ class LimitSelecterFrame extends JFrame {
 		
 	
 		limitPanel.add(new JLabel("min slice number"));
-		this.minSliceNumber = new JTextField("0", 3);
+		this.minSliceNumber = new JTextField("", 3);
 		this.minSliceNumber.setEnabled(false);
 		limitPanel.add(minSliceNumber);
 		
 		limitPanel.add(new JLabel("max slice number"));
-		this.maxSliceNumber = new JTextField("0", 3);
+		this.maxSliceNumber = new JTextField("", 3);
 		this.maxSliceNumber.setEnabled(false);
 		limitPanel.add(maxSliceNumber);
 		
 		limitPanel.add(new JLabel("min value"));
-		this.minValue = new JTextField("0", 3);
+		this.minValue = new JTextField("", 3);
 		this.minValue.setEnabled(false);
 		limitPanel.add(minValue);
 		
 		limitPanel.add(new JLabel("maxValue"));
-		this.maxValue = new JTextField("0", 3);
+		this.maxValue = new JTextField("", 3);
 		this.maxValue.setEnabled(false);
 		limitPanel.add(maxValue);
 		
 		limitPanel.add(new JLabel("minArea"));
-		this.minArea = new JTextField("0", 3);
+		this.minArea = new JTextField("", 3);
 		this.minArea.setEnabled(false);
 		limitPanel.add(minArea);
 		
 		limitPanel.add(new JLabel("maxArea"));
-		this.maxArea = new JTextField("0", 3);
+		this.maxArea = new JTextField("", 3);
 		this.maxArea.setEnabled(false);
 		limitPanel.add(maxArea);
 		
 		limitPanel.add(new JLabel("minCenterX"));
-		this.minCenterX = new JTextField("0", 3);
+		this.minCenterX = new JTextField("", 3);
 		this.minCenterX.setEnabled(false);
 		limitPanel.add(minCenterX);
 		
 		limitPanel.add(new JLabel("maxCenterX"));
-		this.maxCenterX = new JTextField("0", 3);
+		this.maxCenterX = new JTextField("", 3);
 		this.maxCenterX.setEnabled(false);
 		limitPanel.add(maxCenterX);
 		
 		limitPanel.add(new JLabel("minCenterY"));
-		this.minCenterY = new JTextField("0", 3);
+		this.minCenterY = new JTextField("", 3);
 		this.minCenterY.setEnabled(false);
 		limitPanel.add(minCenterY);
 		
 		limitPanel.add(new JLabel("maxCenterY"));
-		this.maxCenterY = new JTextField("0", 3);
+		this.maxCenterY = new JTextField("", 3);
 		this.maxCenterY.setEnabled(false);
 		limitPanel.add(maxCenterY);
 		
