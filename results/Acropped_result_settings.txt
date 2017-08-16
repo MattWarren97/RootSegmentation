@@ -1,0 +1,8 @@
+ACropped_650_496_101:
+Root lowerBound-UpperBound: 14-26
+minClusterSize: 5
+minClusterChainLength: 15
+maxCentreDistance: 5
+areaDiffWeight: 5.0
+colourDiffWeight: 0.1
+aspectRatioDiffWeight: 1.0

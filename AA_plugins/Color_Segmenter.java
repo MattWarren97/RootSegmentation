@@ -27,13 +27,13 @@ import java.util.*;
 public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter, Runnable {
 
 	static int[] lut;
-	static int minClusterSize = 20;
+	static int minClusterSize;
 
-	static float colourDifferenceWeight = 0.1f;
-	static float areaDifferenceWeight = 5.0f;
-	static float aspectRatioDifferenceWeight = 1.0f;
-	static float maxCenterDistance = 5;
-	static int minClusterChainLength = 15;
+	static float colourDifferenceWeight;
+	static float areaDifferenceWeight;
+	static float aspectRatioDifferenceWeight;
+	static float maxCenterDistance;
+	static int minClusterChainLength;
 	
 	static int maximumColourDifference = 1; //no of bins apart.
 	
@@ -59,17 +59,28 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	int minSliceNumber, maxSliceNumber, minValue, maxValue, minArea, maxArea;
 	int minCenterX, maxCenterX, minCenterY, maxCenterY;
 	
+	LimitSelecterFrame limitSelecterFrame;
+
 	public void run(ImageProcessor ip) {
 		System.out.println("Creating gui..");
-		new LimitSelecterFrame(this);
+		this.limitSelecterFrame = new LimitSelecterFrame(this);
 		System.out.println("Created gui!");
 	}
 	
-	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits) {
+	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits,
+	int minClusterSize, int minClusterChainLength, int maxCenterDistance,
+	float areaDifferenceWeight, float aspectRatioDifferenceWeight, float colourDifferenceWeight) {
 		this.updateImage();
 		if (useLimits) {
 			System.err.println("ERROR: useLimits can't be true here.");
 		}
+		Color_Segmenter.minClusterSize = minClusterSize;
+		Color_Segmenter.minClusterChainLength = minClusterChainLength;
+		Color_Segmenter.maxCenterDistance = maxCenterDistance;
+		Color_Segmenter.areaDifferenceWeight = areaDifferenceWeight;
+		Color_Segmenter.aspectRatioDifferenceWeight = aspectRatioDifferenceWeight;
+		Color_Segmenter.colourDifferenceWeight = colourDifferenceWeight;
+
 		ObjectFinder.rootLowerBound = rootLowerBound;
 		ObjectFinder.rootUpperBound = rootUpperBound;
 		this.useLimits = false;
@@ -82,11 +93,21 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits, int minSliceNumber,
 	int maxSliceNumber, int minValue, int maxValue, int minArea, int maxArea, int minCenterX,
-	int maxCenterX, int minCenterY, int maxCenterY, boolean printDifferences) {
+	int maxCenterX, int minCenterY, int maxCenterY, boolean printDifferences,
+	int minClusterSize, int minClusterChainLength, int maxCenterDistance,
+	float areaDifferenceWeight, float aspectRatioDifferenceWeight, float colourDifferenceWeight) {
 		this.updateImage();
 		if (!useLimits) {
 			System.err.println("ERROR: useLimits can't be false here.");
 		}
+
+		Color_Segmenter.minClusterSize = minClusterSize;
+		Color_Segmenter.minClusterChainLength = minClusterChainLength;
+		Color_Segmenter.maxCenterDistance = maxCenterDistance;
+		Color_Segmenter.areaDifferenceWeight = areaDifferenceWeight;
+		Color_Segmenter.aspectRatioDifferenceWeight = aspectRatioDifferenceWeight;
+		Color_Segmenter.colourDifferenceWeight = colourDifferenceWeight;
+
 		ObjectFinder.rootLowerBound = rootLowerBound;
 		ObjectFinder.rootUpperBound = rootUpperBound;
 		this.useLimits = true;
@@ -159,6 +180,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		findConnectedClusters();
 		//displayClusterPairs();
 		findChainedClusters();
+
+		this.limitSelecterFrame.enableRun();
 	}
 	
 	public void findConnectedClusters() {
@@ -804,6 +827,7 @@ class LimitSelecterFrame extends JFrame {
 	JTextField rootUpperBound;
 	JCheckBox printMatches;
 	JCheckBox printDifferences;
+	JCheckBox modifyConstants;
 	
 	JTextField minSliceNumber;
 	JTextField maxSliceNumber;
@@ -814,12 +838,15 @@ class LimitSelecterFrame extends JFrame {
 	JTextField maxCenterX;
 	JTextField maxCenterY;
 	JTextField minArea, maxArea;
+
+	JTextField colourDifferenceWeight, areaDifferenceWeight, aspectRatioDifferenceWeight;
+	JTextField minClusterSize, minClusterChainLength, maxCenterDistance;
 	
 	public LimitSelecterFrame(Color_Segmenter cs) {
 		this.cs = cs;
 		
 		this.setTitle("Select limits");
-		this.setSize(400,600);
+		this.setSize(550,750);
 		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		this.setLayout(new FlowLayout());
 		
@@ -903,7 +930,16 @@ class LimitSelecterFrame extends JFrame {
 				int minSliceNumber, maxSliceNumber, minValue, maxValue;
 				int minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY;
 				boolean printDifferences;
-				System.out.println("HERE!");
+
+				int minClusterSize = Integer.parseInt(LimitSelecterFrame.this.minClusterSize.getText());
+				int minClusterChainLength = Integer.parseInt(LimitSelecterFrame.this.minClusterChainLength.getText());
+				int maxCenterDistance = Integer.parseInt(LimitSelecterFrame.this.maxCenterDistance.getText());
+				float areaDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.areaDifferenceWeight.getText());
+				float colourDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.colourDifferenceWeight.getText());
+				float aspectRatioDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.aspectRatioDifferenceWeight.getText());
+				
+				LimitSelecterFrame.this.run.setEnabled(false);
+
 				if (useLimits) {
 					minArea = Integer.parseInt(LimitSelecterFrame.this.minArea.getText());
 					maxArea = Integer.parseInt(LimitSelecterFrame.this.maxArea.getText());
@@ -917,18 +953,26 @@ class LimitSelecterFrame extends JFrame {
 					maxValue = Integer.parseInt(LimitSelecterFrame.this.maxValue.getText());
 					
 					printDifferences = LimitSelecterFrame.this.printDifferences.isSelected();
+
 					System.out.println("It was true, now about to run");
 					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits, 
-								minSliceNumber, maxSliceNumber, minValue, maxValue,
-								minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY, printDifferences);
+						minSliceNumber, maxSliceNumber, minValue, maxValue,
+						minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY,
+						printDifferences, minClusterSize, minClusterChainLength, maxCenterDistance,
+						areaDifferenceWeight, aspectRatioDifferenceWeight, colourDifferenceWeight);
 				}
 				else {
 					System.out.println("It was false, now about to run");
-					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits);
+					LimitSelecterFrame.this.cs.run(rootLowerBound, rootUpperBound, useLimits,
+						minClusterSize, minClusterChainLength, maxCenterDistance,
+						areaDifferenceWeight, aspectRatioDifferenceWeight, colourDifferenceWeight);
 				}
 				System.out.println("done in actionListener");
 			}
 		});
+
+		this.add(run);
+
 		
 		this.printMatches.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -947,11 +991,68 @@ class LimitSelecterFrame extends JFrame {
 				LimitSelecterFrame.this.printDifferences.setEnabled(selected);
 			}
 		});
-				
-				
-		this.add(run);
+		
+		JPanel constantsPanel = new JPanel();
+		constantsPanel.setLayout(new BoxLayout(constantsPanel, BoxLayout.Y_AXIS));
+		this.add(constantsPanel);
+
+		this.modifyConstants = new JCheckBox("Modify constants?", false);
+		constantsPanel.add(modifyConstants);
+
+		constantsPanel.add(new JLabel("minClusterSize"));
+		this.minClusterSize = new JTextField("20", 5);
+		this.minClusterSize.setEnabled(false);
+		constantsPanel.add(minClusterSize);
+
+		constantsPanel.add(new JLabel("minClusterChainLength"));
+		this.minClusterChainLength = new JTextField("15", 5);
+		this.minClusterChainLength.setEnabled(false);
+		constantsPanel.add(minClusterChainLength);
+
+		constantsPanel.add(new JLabel("maxCenterDistance"));
+		this.maxCenterDistance = new JTextField("5", 5);
+		this.maxCenterDistance.setEnabled(false);
+		constantsPanel.add(maxCenterDistance);
+
+		constantsPanel.add(new JLabel("areaDifferenceWeight"));
+		this.areaDifferenceWeight = new JTextField("5.0", 5);
+		this.areaDifferenceWeight.setEnabled(false);
+		constantsPanel.add(areaDifferenceWeight);
+
+		constantsPanel.add(new JLabel("colourDifferenceWeight"));
+		this.colourDifferenceWeight = new JTextField("0.1", 5);
+		this.colourDifferenceWeight.setEnabled(false);
+		constantsPanel.add(colourDifferenceWeight);
+
+		constantsPanel.add(new JLabel("aspectRatioDifferenceWeight"));
+		this.aspectRatioDifferenceWeight = new JTextField("1.0", 5);
+		this.aspectRatioDifferenceWeight.setEnabled(false);
+		constantsPanel.add(aspectRatioDifferenceWeight);
+
+		this.modifyConstants.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				boolean selected = LimitSelecterFrame.this.modifyConstants.isSelected();
+				if (selected) {
+					System.out.println("Allowing constants to be changed.");
+				}
+				else {
+					System.out.println("Constants can't be changed.");
+				}
+				LimitSelecterFrame.this.minClusterSize.setEnabled(selected);
+				LimitSelecterFrame.this.minClusterChainLength.setEnabled(selected);
+				LimitSelecterFrame.this.maxCenterDistance.setEnabled(selected);
+				LimitSelecterFrame.this.areaDifferenceWeight.setEnabled(selected);
+				LimitSelecterFrame.this.aspectRatioDifferenceWeight.setEnabled(selected);
+				LimitSelecterFrame.this.colourDifferenceWeight.setEnabled(selected);
+			}
+		});
+
 		this.setVisible(true);
 		System.out.println("Made it visible!");
+	}
+
+	public void enableRun() {
+		this.run.setEnabled(true);
 	}
 }
 	
