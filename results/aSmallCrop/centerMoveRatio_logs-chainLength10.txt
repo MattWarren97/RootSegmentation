@@ -1,0 +1,80 @@
+Both tests are (I'm pretty sure) using chainLength: 10 and minClusterSize: 10 (this one could potentially be slightly different...)
+
+Center:			centerMoveRatio = CenterMvmt/CrowFlys											Length
+Not a root:
+(630,456,18)	centerMoveRatio is 3.9343576, total is 18.248564, crow flys is 4.6382575		12
+(612,303,4)		centerMoveRatio is 9.298246, total is 22.221571, crow flys is 2.3898668			10
+(502,112,6)		centerMoveRatio is 1.828548, total is 16.65972, crow flys is 9.110901			12
+(165,190,54)	centerMoveRatio is 3.936073, total is 48.26764, crow flys is 12.262892			20
+
+Is a root:
+(336,348,1)		centerMoveRatio is 1.516587, total is 168.2401, crow flys is 110.933365			94
+(354,116,1)		centerMoveRatio is 2.2493718, total is 154.32079, crow flys is 68.60617			93
+(244,128,1)		centerMoveRatio is 1.7601025, total is 130.58194, crow flys is 74.189964		96
+
+Shorter roots:
+(370,130,1)		centerMoveRatio is 2.5487957, total is 29.537848, crow flys is 11.588943		19
+(344,199,29)	centerMoveRatio is 1.2428157, total is 31.03789, crow flys is 24.973846			11
+(360,273,29)	centerMoveRatio is 2.1149735, total is 23.418612, crow flys is 11.072768		12
+(231,337,1)		centerMoveRatio is 2.521442, total is 30.418768, crow flys is 12.064036			12
+
+
+
+Seems to be a pattern:
+roots have 'centerMoveRatio' of less than 3.
+I'll try that.
+It was ok... What about centerMovementVariance as a metric?
+
+
+[[Using the same clusters]] --mostly,
+Though apparently 354,116,1 wasn't there so 348,120,1 instead... strange. These both have same lengths as before.
+(Maybe this is something to do with non-deterministic nature of iterating over hashset??)
+Also, (244,128,1) has become (244,130,1)... wtf!>??
+Also, (370,130,1) has become (368,130,1)...
+Also, (344,199,29) hsa become (337,200,29).........
+
+Center:			CenterMoveRatio, centerMovementVariance											Length
+Not a root:
+(630,456,18)	smoothness: 3.9343576, movementVariance: 0.81029606								12
+(612,303,4)		smoothness: 9.298246, movementVariance: 2.0007918								10
+(502,112,6)		smoothness: 1.828548, movementVariance: 1.069146								12
+(165,190,54)	smoothness: 3.936073, movementVariance: 1.5058122								20
+
+Is a root:
+(336,348,1)		smoothness: 1.516587, movementVariance: 1.1670139								94
+(348,120,1)		smoothness: 2.4098563, movementVariance: 1.4143559								93
+(244,130,1)		smoothness: 1.840215, movementVariance: 0.72863597								96
+
+Shorter roots:
+(368,130,1)		smoothness: 2.5599954, movementVariance: 1.1516281								19
+(337,200,29)	smoothness: 1.4843165, movementVariance: 2.049056								11
+(360,273,29)	smoothness: 2.1149735, movementVariance: 1.4504809								12
+(231,337,1)		smoothness: 2.521442, movementVariance: 1.1138188								12
+
+So, on the movement variance front I am not seeing much of a pattern there at all. 
+It is strange about the clusters having different center points on their first cluster though.
+I'm not really sure what's up with that.
+
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

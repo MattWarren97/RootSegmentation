@@ -454,16 +454,73 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		System.out.println(lengthsString);
 		this.duplicateImage.show();
 	}
+	
+	public float getCenterSmoothness(ArrayList<Cluster> clusters) {
+		float[] center;
+		float centerDiffTotal = 0;
+		float[] initialCenter = clusters.get(0).getCenter();
+		float[] finalCenter = clusters.get(clusters.size()-1).getCenter();
+		float centerCrowFlys = (float) Math.sqrt(Math.pow(initialCenter[0] - finalCenter[0], 2) + Math.pow(initialCenter[1] - finalCenter[1], 2));
+		float[] prevCenter = initialCenter;
 		
+		for (Cluster c: clusters){ 
+			center = c.getCenter();
+			float diffCenter = (float) Math.sqrt(Math.pow(center[0] - prevCenter[0], 2) + Math.pow(center[1] - prevCenter[1], 2));
+			centerDiffTotal += diffCenter;
+			
+			prevCenter = center;
+		}
 		
+		float centerMoveAverage = (centerDiffTotal/((float)clusters.size()));
+		float centerSmoothness = (centerDiffTotal/centerCrowFlys);
+		System.out.println("Had average: " + centerMoveAverage + ", smoothness: " + centerSmoothness);
+		return centerSmoothness;
+	}
+	
+	public float getCenterMovementVariance(ArrayList<Cluster> clusters) {
 		
-		
+		float centerDiffTotal = 0;
+		float[] center;
+		float[] initialCenter = clusters.get(0).getCenter();
+		float[] prevCenter = initialCenter;
+		for (Cluster c: clusters) {
+			center = c.getCenter();
+			float diffCenter = (float) Math.sqrt(Math.pow(center[0] - prevCenter[0], 2) + Math.pow(center[1] - prevCenter[1], 2));
+			centerDiffTotal += diffCenter;
+			prevCenter = center;
+		}
+		float centerDiffAverage = centerDiffTotal/((float)clusters.size());
+		float centerMovementVariance = 0;
+		prevCenter = initialCenter;
+		for (Cluster c: clusters) {
+			center = c.getCenter();
+			float diffCenter = (float) Math.sqrt(Math.pow(center[0] - prevCenter[0], 2) + Math.pow(center[1] - prevCenter[1], 2));
+
+			float variance = (float) Math.pow(diffCenter-centerDiffAverage, 2);
+			centerMovementVariance += variance;
+			prevCenter = center;
+		}
+		centerMovementVariance /= clusters.size();
+		return centerMovementVariance;
+	}
+
 	public void highlight(ArrayList<Cluster> clusters) {
 		System.out.println("----------------------Highlighting a new chain!-----------------");
 		System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
+		float centerSmoothness = getCenterSmoothness(clusters);
+		float centerMovementVariance = getCenterMovementVariance(clusters);
+		System.out.println("smoothness: " + centerSmoothness +", movementVariance: " + centerMovementVariance);
+		//if (centerSmoothness > 3) {
+		//	System.out.println("Not highlighting - smoothnes is too high! " + centerSmoothness);
+		//	return;
+		//}
+		//System.out.println("Will highlight this cluster with smoothness " + centerSmoothness);
+		
 		int whiteColour = 255;
+		
+		
 		for (Cluster c : clusters) {
-			//System.out.println(c);
+			
 			ImageProcessor sliceProcessor = this.image.getStack().getProcessor(c.getSliceNumber());
 			byte[] pixels = (byte[]) sliceProcessor.getPixels();
 			
@@ -471,9 +528,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 				pixels[p.y*sliceProcessor.getWidth()+p.x] = (byte) whiteColour;
 			}
 			sliceProcessor.setPixels(pixels);
-			
 		}
 	}
+	
 	public Float compareClusters(Cluster c1, Cluster c2) {
 		return this.compareClusters(c1, c2, false);
 	}
