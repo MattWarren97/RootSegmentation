@@ -23,6 +23,7 @@ import externalPluginCopies.FilterPlugin.FilterType;
 public abstract class SegmentationPlugin implements PlugInFilter {
 	
 	ImagePlus image;
+	ImagePlus duplicateImage;
 	public int X;
 	public int Y;
 	public int Z;
@@ -57,7 +58,7 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 	public void showAbout() {
 
 	}
-	public void updateImage() {
+	public void updateImage(boolean duplicate) {
 		ImagePlus currentImage = WindowManager.getCurrentImage();
 		if (currentImage == null) {
 			System.err.println("current image is null - failed.");
@@ -65,6 +66,11 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 		}
 		System.out.println("Running setup with image of size: " + currentImage.getStackSize());
 		this.setup("", currentImage);
+		if (duplicate) {
+			this.duplicateImage = this.image.duplicate();
+			this.duplicateImage.setTitle("Original Image");
+			System.out.println("Setup duplicate image");
+		}
 	}
 	
 	

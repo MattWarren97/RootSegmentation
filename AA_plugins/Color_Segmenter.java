@@ -46,13 +46,13 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		}
 	}
 	
-
 	HashMap<Integer, ArrayList<Cluster>> sliceClusterMap;
 	HashMap<Integer, Integer> differenceCounts;
 	HashMap<Integer, HashMap<Cluster, Cluster>> pairedClustersBySlice;
 	HashMap<Cluster, Cluster> replacements;
 	
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
+	HashMap<Integer, ArrayList<ArrayList<Cluster>>> chainLengths_chains_MAP;
 	
 	//multithreaded run version
 	boolean useLimits, printDifferences;
@@ -60,7 +60,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	int minCenterX, maxCenterX, minCenterY, maxCenterY;
 	
 	LimitSelecterFrame limitSelecterFrame;
-
+	
 	public void run(ImageProcessor ip) {
 		System.out.println("Creating gui..");
 		this.limitSelecterFrame = new LimitSelecterFrame(this);
@@ -70,7 +70,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	public void run(int rootLowerBound, int rootUpperBound, boolean useLimits,
 	int minClusterSize, int minClusterChainLength, int maxCenterDistance,
 	float areaDifferenceWeight, float aspectRatioDifferenceWeight, float colourDifferenceWeight) {
-		this.updateImage();
+		this.updateImage(true);
 		if (useLimits) {
 			System.err.println("ERROR: useLimits can't be true here.");
 		}
@@ -96,7 +96,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	int maxCenterX, int minCenterY, int maxCenterY, boolean printDifferences,
 	int minClusterSize, int minClusterChainLength, int maxCenterDistance,
 	float areaDifferenceWeight, float aspectRatioDifferenceWeight, float colourDifferenceWeight) {
-		this.updateImage();
+		this.updateImage(true);
 		if (!useLimits) {
 			System.err.println("ERROR: useLimits can't be false here.");
 		}
@@ -130,6 +130,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 						
 		
 	public void run() {
+		
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //TODO does this need to be synchronised?
 		this.pairedClustersBySlice = new HashMap<Integer, HashMap<Cluster, Cluster>>();
 		
@@ -180,7 +181,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		findConnectedClusters();
 		//displayClusterPairs();
 		findChainedClusters();
-
+		
+		highlightChains();
+		
 		this.limitSelecterFrame.enableRun();
 	}
 	
@@ -369,7 +372,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	//Then I can get to visualising the results.
 	
 	public void findChainedClusters() {
-		HashMap<Integer, Integer> chainLengths = new HashMap<Integer, Integer>();
+		chainLengths_chains_MAP = new HashMap<Integer, ArrayList<ArrayList<Cluster>>>();
 		int stackSize = this.image.getStackSize();
 		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
 			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
@@ -400,86 +403,61 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 				while (key != null);
 				
 				int chainLength = chain.size();
-				if (chainLengths.containsKey(chainLength)) {
-					chainLengths.put(chainLength, chainLengths.get(chainLength) + 1);
+				if (chainLengths_chains_MAP.containsKey(chainLength)) {
+					ArrayList<ArrayList<Cluster>> chainsAtLength = chainLengths_chains_MAP.get(chainLength);
+					chainsAtLength.add(chain);
+					chainLengths_chains_MAP.put(chainLength, chainsAtLength);
 				}
 				else {
-					chainLengths.put(chainLength, 1);
+					ArrayList<ArrayList<Cluster>> chainsAtLength = new ArrayList<ArrayList<Cluster>>();
+					chainsAtLength.add(chain);
+					chainLengths_chains_MAP.put(chainLength, chainsAtLength);
 				}
-				
-				if (chainLength > Color_Segmenter.minClusterChainLength) {
+			}
+		}
+		
+	}
+
+	public void highlightChainsAtValue(int minClusterChainLength) {
+		Runnable r = new Runnable() {
+			public void run() {
+				Color_Segmenter.minClusterChainLength = minClusterChainLength;
+				Color_Segmenter.this.updateImage(true);
+				for (int i = 1; i <= Color_Segmenter.this.image.getStackSize(); i++) {
+					ImageProcessor ip = Color_Segmenter.this.image.getStack().getProcessor(i);
+					ip.applyTable(Color_Segmenter.lut);
+				}
+				Color_Segmenter.this.highlightChains();
+			}
+		};
+		Thread t = new Thread(r);
+		t.start();
+	}
+	
+	private void highlightChains() {
+
+		System.out.println("Chain lengths:");
+		Iterator<Integer> chainLengthsIterator = chainLengths_chains_MAP.keySet().iterator();
+		System.out.println("Highlighting all chains with length longer than " + Color_Segmenter.minClusterChainLength);
+
+		String lengthsString = "Length: count";
+		while(chainLengthsIterator.hasNext()) {
+			int nextLength = chainLengthsIterator.next();
+			ArrayList<ArrayList<Cluster>> chains = chainLengths_chains_MAP.get(nextLength);
+			lengthsString = lengthsString + ", " + nextLength + ": " + chains.size();
+			if (nextLength >= Color_Segmenter.minClusterChainLength) {
+				for (ArrayList<Cluster> chain : chains) {
 					highlight(chain);
 				}
 			}
 		}
-		System.out.println("Chain lengths: " + chainLengths);
+		System.out.println(lengthsString);
+		this.duplicateImage.show();
 	}
-				
-				
-	
-	
-	/*public void findChainedClusters() {
-		
-		//System.out.println("begin findChainedClusters()");
-		//for (int sliceNumber = 1; sliceNumber <= this.image.getStackSize() - 1; sliceNumber++) {
-		//	DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
-		//	ArrayList<Cluster> valuesList = new ArrayList<Cluster>(connectedClusters.values());
-		//	Set<Cluster> valuesSet = new HashSet<Cluster>(connectedClusters.values());
-		//	System.out.println("valuesList " + valuesList.size());
-		//	System.out.println("valuesSet " + valuesSet.size());
-		//	if (valuesList.size() != valuesSet.size()) {
-		//		System.out.println("On slice " + sliceNumber + ", valuesList: " + valuesList.size() + ", valuesSet: " + valuesSet.size());
-		//	}
-		//}
-		//System.out.println("finished findChainedClusters");
 		
 		
-		HashMap<Integer, Integer> clusterLengths = new HashMap<Integer, Integer>();
-		int stackSize = this.image.getStackSize();
-		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
-			DualHashBidiMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
-			
-			for (Cluster firstKey: connectedClusters.keySet()) {
-				Cluster key = firstKey;
-				Cluster next;
-				int length = 0;
-				do {
-					if (key.getSliceNumber() == stackSize) {
-						length++;
-						break;
-					}
-					next = pairedClustersBySlice.get(key.getSliceNumber()).get(key);
-					key = next;
-					length++;
-				}
-				while(key != null);
-				if (clusterLengths.containsKey(length)) {
-					clusterLengths.put(length, clusterLengths.get(length) + 1);
-				}
-				else {
-					clusterLengths.put(length, 1);
-				}
-				if (length > Color_Segmenter.minClusterChainLength) {
-					//System.out.println("Chain from sliceNumber: " + sliceNumber + " has a length of at least " + length);
-					ArrayList<Cluster> toBeDisplayed = new ArrayList<Cluster>();
-					key = firstKey;
-					do {
-						toBeDisplayed.add(key);
-						if (key.getSliceNumber() == stackSize) {
-							break;
-						}
-						next = pairedClustersBySlice.get(key.getSliceNumber()).get(key);
-						key = next;
-					}
-					while (key != null);
-					highlight(toBeDisplayed);
-				}
-			}
-		}
 		
-		System.out.println("Cluster lengths: " + clusterLengths); //TODO why is this wrong?
-	}*/
-
+		
 	public void highlight(ArrayList<Cluster> clusters) {
 		System.out.println("----------------------Highlighting a new chain!-----------------");
 		System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
@@ -823,6 +801,7 @@ class ObjectFinder implements Runnable {
 class LimitSelecterFrame extends JFrame {
 	Color_Segmenter cs;
 	JButton run;
+	JButton highlightChains;
 	JTextField rootLowerBound;
 	JTextField rootUpperBound;
 	JCheckBox printMatches;
@@ -920,7 +899,7 @@ class LimitSelecterFrame extends JFrame {
 		limitPanel.add(maxCenterY);
 		
 		this.run = new JButton("RUN");
-		
+
 		this.run.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				System.out.println("Run action performed");
@@ -1009,6 +988,10 @@ class LimitSelecterFrame extends JFrame {
 		this.minClusterChainLength.setEnabled(false);
 		constantsPanel.add(minClusterChainLength);
 
+		this.highlightChains = new JButton("Highlight chains");
+		constantsPanel.add(highlightChains);
+		this.highlightChains.setEnabled(false);
+		
 		constantsPanel.add(new JLabel("maxCenterDistance"));
 		this.maxCenterDistance = new JTextField("5", 5);
 		this.maxCenterDistance.setEnabled(false);
@@ -1046,13 +1029,20 @@ class LimitSelecterFrame extends JFrame {
 				LimitSelecterFrame.this.colourDifferenceWeight.setEnabled(selected);
 			}
 		});
-
+		
+		this.highlightChains.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int minClusterChainLength = Integer.parseInt(LimitSelecterFrame.this.minClusterChainLength.getText());
+				LimitSelecterFrame.this.cs.highlightChainsAtValue(minClusterChainLength);
+			}
+		});
 		this.setVisible(true);
 		System.out.println("Made it visible!");
 	}
 
 	public void enableRun() {
 		this.run.setEnabled(true);
+		this.highlightChains.setEnabled(true);
 	}
 }
 	
