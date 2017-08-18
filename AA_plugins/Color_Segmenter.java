@@ -437,8 +437,17 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	//chains should try to join up to other chains (to plug gaps).
 	//short chains (more likely to be noise) should not be joined up so easily as long chains to other long chains
 	public void findConnectedChains() { 
+		//need to sort/arrange ClusterChains by start slice & end slice rather than chain lengths
 		
+		HashMap<IntegerClusterChain
 		
+		HashMap<Integer, ArrayList<ClusterChain>> startSlice_chains_MAP = new HashMap<Integer, ArrayList<ClusterChain>>();
+		HashMap<Integer, ArrayList<ClusterChain>> endSlice_chains_MAP = new HashMap<Integer, ArrayList<ClusterChain>>();
+		Iterator<Integer> chainListIterator = chainLengths_chains_MAP.keySet().iterator();
+		while(chainListIterator.hasNext()) {
+			Integer nextLength = chainListIterator.next();
+			ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(nextLength);
+			if (
 		
 	}
 		
