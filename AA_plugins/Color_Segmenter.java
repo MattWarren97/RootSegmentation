@@ -52,7 +52,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	HashMap<Cluster, Cluster> replacements;
 	
 	HashMap<Integer, HashMap<Integer, ArrayList<Cluster>>> sliceNumber_clusterValue_clusters_MAP;
-	HashMap<Integer, ArrayList<ArrayList<Cluster>>> chainLengths_chains_MAP;
+	HashMap<Integer, ArrayList<ClusterChain>> chainLengths_chains_MAP;
 	
 	//multithreaded run version
 	boolean useLimits, printDifferences;
@@ -181,6 +181,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		findConnectedClusters();
 		//displayClusterPairs();
 		findChainedClusters();
+		
+		findConnectedChains();
 		
 		highlightChains();
 		
@@ -347,32 +349,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		//ImagePlus ip = this.image.duplicate();*/
 		this.image.show();
 	}
-	
-	/*public void findChainedClusters() {
-		HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
-		for (Cluster c: connectedClusters.keySet()) {
-		}
-	}*/
-			
-			
-	//minimum length of chains found will be 2 bc it is known they are connected to at least one...
-	
-	//problem is that A-B-C-D-E-F_G... will also get picked up as B-C_D_E_F_G.
-	//I could remove B-C_D_E_F_G once I've found the chain A-B_C_D_E_F_G,
-	//but it is entirely possible to have: A-B-C-D-E-F-G AND A2-B-C-D-E-F-G-... 
-	//so I guess B and it's consequent chain should be stored as a known chain that can be linked to again...
-	//(same thing will need to be done for C-D-E-F_G... and D-E-F-G... etc.)
-	//that's a pain!
-	
-	//results:
-	//Cluster lengths: {2=95660, 3=64261, 4=45500, 5=33396, 6=24993, 7=19255, 8=14995, 9=11668, 10=9163, 11=7350, 12=5746, 13=4562, 14=3582, 15=2839, 16=2278, 17=1818, 18=1454, 19=1166, 20=884, 21=741, 22=584, 23=472, 24=396, 25=318, 26=269, 27=225, 28=186, 29=159, 30=129, 31=94, 32=81, 33=73, 34=70, 35=61, 36=48, 37=47, 38=35, 39=32, 40=34, 41=29, 42=27, 43=27, 44=22, 45=19, 46=20, 47=22, 48=19, 49=15, 50=12, 51=9, 52=8, 53=8, 54=7, 55=5, 56=5, 57=4, 58=4, 59=4, 60=3, 61=3, 62=4, 63=3, 64=3, 65=3, 66=3, 67=3, 68=4, 69=4, 70=4, 71=6, 72=6, 73=3, 74=3, 75=2, 76=1, 77=1, 78=1, 79=1, 80=1, 81=1, 82=2, 83=2, 84=3, 85=2, 86=2, 87=1, 88=1, 89=1, 90=1, 91=1, 92=1, 93=1, 94=1, 95=3, 96=2, 97=1, 98=1, 99=1, 100=1, 101=2, 102=1, 103=1, 104=1, 105=1, 106=1, 107=2, 108=2, 109=2, 110=2, 111=1, 112=1, 113=1, 114=1, 115=1, 116=1, 117=1, 118=1, 119=1, 120=1, 121=1, 122=1, 123=1, 124=1, 125=1, 126=1, 127=1, 128=1, 129=1, 130=1, 131=1, 132=1, 133=1, 134=2, 135=3, 136=2, 137=3, 138=3, 139=2, 140=1, 141=1, 142=2}
 
-	//These aren't consistent with what I expected... How can there be 2 at length 142, but only 1 at length 141?
-	//need to fix this I suppose.
-	//Then I can get to visualising the results.
-	
 	public void findChainedClusters() {
-		chainLengths_chains_MAP = new HashMap<Integer, ArrayList<ArrayList<Cluster>>>();
+		chainLengths_chains_MAP = new HashMap<Integer, ArrayList<ClusterChain>>();
 		int stackSize = this.image.getStackSize();
 		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
 			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
@@ -404,13 +383,13 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 				
 				int chainLength = chain.size();
 				if (chainLengths_chains_MAP.containsKey(chainLength)) {
-					ArrayList<ArrayList<Cluster>> chainsAtLength = chainLengths_chains_MAP.get(chainLength);
-					chainsAtLength.add(chain);
+					ArrayList<ClusterChain> chainsAtLength = chainLengths_chains_MAP.get(chainLength);
+					chainsAtLength.add(new ClusterChain(chain));
 					chainLengths_chains_MAP.put(chainLength, chainsAtLength);
 				}
 				else {
-					ArrayList<ArrayList<Cluster>> chainsAtLength = new ArrayList<ArrayList<Cluster>>();
-					chainsAtLength.add(chain);
+					ArrayList<ClusterChain> chainsAtLength = new ArrayList<ClusterChain>();
+					chainsAtLength.add(new ClusterChain(chain));
 					chainLengths_chains_MAP.put(chainLength, chainsAtLength);
 				}
 			}
@@ -443,10 +422,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		String lengthsString = "Length: count";
 		while(chainLengthsIterator.hasNext()) {
 			int nextLength = chainLengthsIterator.next();
-			ArrayList<ArrayList<Cluster>> chains = chainLengths_chains_MAP.get(nextLength);
+			ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(nextLength);
 			lengthsString = lengthsString + ", " + nextLength + ": " + chains.size();
 			if (nextLength >= Color_Segmenter.minClusterChainLength) {
-				for (ArrayList<Cluster> chain : chains) {
+				for (ClusterChain chain : chains) {
 					highlight(chain);
 				}
 			}
@@ -454,6 +433,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		System.out.println(lengthsString);
 		this.duplicateImage.show();
 	}
+	
+	//chains should try to join up to other chains (to plug gaps).
+	//short chains (more likely to be noise) should not be joined up so easily as long chains to other long chains
+	public void findConnectedChains() { 
+		
+		
+		
+	}
+		
 	
 	public float getCenterSmoothness(ArrayList<Cluster> clusters) {
 		float[] center;
@@ -504,7 +492,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		return centerMovementVariance;
 	}
 
-	public void highlight(ArrayList<Cluster> clusters) {
+	public void highlight(ClusterChain chain) {
+		ArrayList<Cluster> clusters = chain.clusters;
 		System.out.println("----------------------Highlighting a new chain!-----------------");
 		System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
 		float centerSmoothness = getCenterSmoothness(clusters);
