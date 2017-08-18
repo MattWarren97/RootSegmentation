@@ -477,7 +477,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			centerDiffTotal += diffCenter;
 			prevCenter = center;
 		}
-		float centerDiffAverage = centerDiffTotal/((float)clusters.size());
+		float centerDiffAverage = centerDiffTotal/((float)clusters.size() - 1);
 		float centerMovementVariance = 0;
 		prevCenter = initialCenter;
 		for (Cluster c: clusters) {
@@ -488,7 +488,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			centerMovementVariance += variance;
 			prevCenter = center;
 		}
-		centerMovementVariance /= clusters.size();
+		centerMovementVariance /= (clusters.size()-1);
 		return centerMovementVariance;
 	}
 
