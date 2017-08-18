@@ -29,12 +29,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	static int[] lut;
 	static int minClusterSize;
 
+	//early processing constants
 	static float colourDifferenceWeight;
 	static float areaDifferenceWeight;
 	static float aspectRatioDifferenceWeight;
 	static float maxCenterDistance;
-	static int minClusterChainLength;
-	
 	static int maximumColourDifference = 1; //no of bins apart.
 	
 	static {
@@ -45,6 +44,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			lut[i] = (int) ((float)i/divisor);
 		}
 	}
+	
+	//post processing constants
+	static int minClusterChainLength;
+	static float majorMinorRatioLimit;
+	static float chainJoiningScaler;
 	
 	HashMap<Integer, ArrayList<Cluster>> sliceClusterMap;
 	HashMap<Integer, Integer> differenceCounts;
@@ -397,15 +401,21 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		
 	}
 
-	public void highlightChainsAtValue(int minClusterChainLength) {
+	public void runPostProcessing(float chainJoiningScaler, float majorMinorRatioLimit, int minClusterChainLength) {
 		Runnable r = new Runnable() {
 			public void run() {
 				Color_Segmenter.minClusterChainLength = minClusterChainLength;
+				Color_Segmenter.majorMinorRatioLimit = majorMinorRatioLimit;
+				Color_Segmenter.chainJoiningScaler = chainJoiningScaler;
+				
+				//set 'this.image' to the currently selected image.
 				Color_Segmenter.this.updateImage(true);
+				//darken the background of the image (by applying the 5-bit lut).
 				for (int i = 1; i <= Color_Segmenter.this.image.getStackSize(); i++) {
 					ImageProcessor ip = Color_Segmenter.this.image.getStack().getProcessor(i);
 					ip.applyTable(Color_Segmenter.lut);
 				}
+				Color_Segmenter.this.filterAndJoinChains();
 				Color_Segmenter.this.highlightChains();
 			}
 		};
@@ -425,6 +435,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(nextLength);
 			lengthsString = lengthsString + ", " + nextLength + ": " + chains.size();
 			if (nextLength >= Color_Segmenter.minClusterChainLength) {
+				
 				for (ClusterChain chain : chains) {
 					highlight(chain);
 				}
@@ -432,6 +443,16 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		}
 		System.out.println(lengthsString);
 		this.duplicateImage.show();
+	}
+	
+	//using Color_Segmenter.majorMinorRatioLimit and Color_Segmenter.chainJoiningScaler --
+	//firstly filter to only chains that could be potential roots,
+	//then try to join any of these up to other chains (or to other 'root-like chains'.
+	//use the chainJoiningScaler as a scaler for the distance away from a root end a root might look.
+	//the length of the root chain (derived from major of the ellipse) should also be used 
+	private void filterAndJoinChains() {
+		
+		
 	}
 	
 	//chains should try to join up to other chains (to plug gaps).
@@ -443,7 +464,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	}
 		
 	
-	public float getCenterSmoothness(ArrayList<Cluster> clusters) {
+	public float getCenterSmoothness(ClusterChain cc) {
+		ArrayList<Cluster> clusters = cc.clusters;
 		float[] center;
 		float centerDiffTotal = 0;
 		float[] initialCenter = clusters.get(0).getCenter();
@@ -465,8 +487,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		return centerSmoothness;
 	}
 	
-	public float getCenterMovementVariance(ArrayList<Cluster> clusters) {
-		
+	public float getCenterMovementVariance(ClusterChain cc) {
+		ArrayList<Cluster> clusters = cc.clusters;
 		float centerDiffTotal = 0;
 		float[] center;
 		float[] initialCenter = clusters.get(0).getCenter();
@@ -496,8 +518,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		ArrayList<Cluster> clusters = chain.clusters;
 		System.out.println("----------------------Highlighting a new chain!-----------------");
 		System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
-		float centerSmoothness = getCenterSmoothness(clusters);
-		float centerMovementVariance = getCenterMovementVariance(clusters);
+		float centerSmoothness = getCenterSmoothness(chain);
+		float centerMovementVariance = getCenterMovementVariance(chain);
 		System.out.println("smoothness: " + centerSmoothness +", movementVariance: " + centerMovementVariance);
 		//if (centerSmoothness > 3) {
 		//	System.out.println("Not highlighting - smoothnes is too high! " + centerSmoothness);
@@ -847,12 +869,11 @@ class ObjectFinder implements Runnable {
 class LimitSelecterFrame extends JFrame {
 	Color_Segmenter cs;
 	JButton run;
-	JButton highlightChains;
+	JButton postProcessing;
 	JTextField rootLowerBound;
 	JTextField rootUpperBound;
 	JCheckBox printMatches;
 	JCheckBox printDifferences;
-	JCheckBox modifyConstants;
 	
 	JTextField minSliceNumber;
 	JTextField maxSliceNumber;
@@ -863,6 +884,8 @@ class LimitSelecterFrame extends JFrame {
 	JTextField maxCenterX;
 	JTextField maxCenterY;
 	JTextField minArea, maxArea;
+	JTextField chainJoiningScaler;
+	JTextField majorMinorRatioLimit;
 
 	JTextField colourDifferenceWeight, areaDifferenceWeight, aspectRatioDifferenceWeight;
 	JTextField minClusterSize, minClusterChainLength, maxCenterDistance;
@@ -962,8 +985,10 @@ class LimitSelecterFrame extends JFrame {
 				float areaDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.areaDifferenceWeight.getText());
 				float colourDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.colourDifferenceWeight.getText());
 				float aspectRatioDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.aspectRatioDifferenceWeight.getText());
+				float 
 				
 				LimitSelecterFrame.this.run.setEnabled(false);
+				LimitSelecterFrame.this.postProcessing.setEnabled(false);
 
 				if (useLimits) {
 					minArea = Integer.parseInt(LimitSelecterFrame.this.minArea.getText());
@@ -1021,74 +1046,101 @@ class LimitSelecterFrame extends JFrame {
 		constantsPanel.setLayout(new BoxLayout(constantsPanel, BoxLayout.Y_AXIS));
 		this.add(constantsPanel);
 
-		this.modifyConstants = new JCheckBox("Modify constants?", false);
-		constantsPanel.add(modifyConstants);
 
 		constantsPanel.add(new JLabel("minClusterSize"));
 		this.minClusterSize = new JTextField("20", 5);
-		this.minClusterSize.setEnabled(false);
 		constantsPanel.add(minClusterSize);
-
-		constantsPanel.add(new JLabel("minClusterChainLength"));
-		this.minClusterChainLength = new JTextField("15", 5);
-		this.minClusterChainLength.setEnabled(false);
-		constantsPanel.add(minClusterChainLength);
-
-		this.highlightChains = new JButton("Highlight chains");
-		constantsPanel.add(highlightChains);
-		this.highlightChains.setEnabled(false);
 		
 		constantsPanel.add(new JLabel("maxCenterDistance"));
 		this.maxCenterDistance = new JTextField("5", 5);
-		this.maxCenterDistance.setEnabled(false);
 		constantsPanel.add(maxCenterDistance);
 
 		constantsPanel.add(new JLabel("areaDifferenceWeight"));
 		this.areaDifferenceWeight = new JTextField("5.0", 5);
-		this.areaDifferenceWeight.setEnabled(false);
 		constantsPanel.add(areaDifferenceWeight);
 
 		constantsPanel.add(new JLabel("colourDifferenceWeight"));
 		this.colourDifferenceWeight = new JTextField("0.1", 5);
-		this.colourDifferenceWeight.setEnabled(false);
 		constantsPanel.add(colourDifferenceWeight);
 
 		constantsPanel.add(new JLabel("aspectRatioDifferenceWeight"));
 		this.aspectRatioDifferenceWeight = new JTextField("1.0", 5);
-		this.aspectRatioDifferenceWeight.setEnabled(false);
 		constantsPanel.add(aspectRatioDifferenceWeight);
 
-		this.modifyConstants.addActionListener(new ActionListener() {
+
+
+		
+		JPanel postProcessPanel = new JPanel();
+		postProcessPanel.setLayout(new BoxLayout(postProcessPanel, BoxLayout.Y_AXIS));
+		this.add(postProcessPanel);
+		postProcessPanel.add(new JLabel("Modify post-processing constants"));
+		
+		postProcessPanel.add(new JLabel("minClusterChainLength"));
+		this.minClusterChainLength = new JTextField("15", 5);
+		postProcessPanel.add(minClusterChainLength);
+		
+		postProcessPanel.add(new JLabel("chainJoiningScaler"));
+		this.chainJoiningScaler = new JTextField("1", 5);
+		postProcessPanel.add(chainJoiningScaler);
+		
+		postProcessPanel.add(new JLabel("majorMinorRatioLimit"));
+		this.majorMinorRatioLimit = new JTextField("2", 5);
+		postProcessPanel.add(majorMinorRatioLimit);
+		
+		this.postProcessing = new JButton("Run Post-Processing only");
+		postProcessPanel.add(postProcessing);
+		
+		this.postProcessing.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				boolean selected = LimitSelecterFrame.this.modifyConstants.isSelected();
-				if (selected) {
-					System.out.println("Allowing constants to be changed.");
-				}
-				else {
-					System.out.println("Constants can't be changed.");
-				}
-				LimitSelecterFrame.this.minClusterSize.setEnabled(selected);
-				LimitSelecterFrame.this.minClusterChainLength.setEnabled(selected);
-				LimitSelecterFrame.this.maxCenterDistance.setEnabled(selected);
-				LimitSelecterFrame.this.areaDifferenceWeight.setEnabled(selected);
-				LimitSelecterFrame.this.aspectRatioDifferenceWeight.setEnabled(selected);
-				LimitSelecterFrame.this.colourDifferenceWeight.setEnabled(selected);
+				int minClusterChainLength = Integer.parseInt(LimitSelecterFrame.this.minClusterChainLength.getText());
+				float majorMinorRatioLimit = Float.parseFloat(LimitSelecterFrame.this.majorMinorRatioLimit.getText());
+				float chainJoiningScaler = Float.parseFloat(LimitSelecterFrame.this.chainJoiningScaler.getText());
+				LimitSelecterFrame.this.cs.runPostProcessing(chainJoiningScaler, majorMinorRatioLimit, minClusterChainLength);
 			}
 		});
 		
-		this.highlightChains.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int minClusterChainLength = Integer.parseInt(LimitSelecterFrame.this.minClusterChainLength.getText());
-				LimitSelecterFrame.this.cs.highlightChainsAtValue(minClusterChainLength);
-			}
-		});
+		
+		
+		
+		
+		
+		
+		
 		this.setVisible(true);
 		System.out.println("Made it visible!");
 	}
 
 	public void enableRun() {
 		this.run.setEnabled(true);
-		this.highlightChains.setEnabled(true);
+		this.postProcessing.setEnabled(true);
 	}
 }
+
+//TODO: sanitise inputs.. finish both versions of constructor, 
+class GUIOptions {
+	public int rootLowerBound;
+	public int rootUpperBound;
+	public boolean usePrintingLimits;
+	public int minClusterSize;
+	public float maxCenterDistance;
+	public float areaDifferenceWeight;
+	public float aspectRatioDifferenceWeight;
+	public float colourDifferenceWeight;
 	
+	public int minClusterChainLength;
+	public float majorMinorRatioLimit;
+	public float chainJoiningScaler;
+	
+	public int minSliceNumber, maxSliceNumber;
+	public int minValue, maxValue;
+	public int minArea, maxArea;
+	public int minCenterX, maxCenterX, minCenterY, maxCenterY;
+	
+	public GUIOptions(int rootLowerBound, int rootUpperBound, boolean usePrintingLimits, int minClusterSize,
+					float maxCenterDistance, float areaDifferenceWeight, float aspectRatioDifferenceWeight, 
+					float colourDifferenceWeight, int minClusterChainLength) {
+					
+	
+	run(rootLowerBound, rootUpperBound, useLimits,
+						minClusterSize, minClusterChainLength, maxCenterDistance,
+						areaDifferenceWeight, aspectRatioDifferenceWeight, colourDifferenceWeight);
