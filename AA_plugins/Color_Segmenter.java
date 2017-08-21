@@ -82,6 +82,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			Color_Segmenter.areaDifferenceWeight = options.areaDifferenceWeight;
 			Color_Segmenter.aspectRatioDifferenceWeight = options.aspectRatioDifferenceWeight;
 			Color_Segmenter.colourDifferenceWeight = options.colourDifferenceWeight;
+			Color_Segmenter.minClusterChainLength = options.minClusterChainLength;
+
 			this.printDifferences = false;
 
 			this.minSliceNumber = options.minSliceNumber;
@@ -105,6 +107,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			Color_Segmenter.areaDifferenceWeight = options.areaDifferenceWeight;
 			Color_Segmenter.aspectRatioDifferenceWeight = options.aspectRatioDifferenceWeight;
 			Color_Segmenter.colourDifferenceWeight = options.colourDifferenceWeight;
+			Color_Segmenter.minClusterChainLength = options.minClusterChainLength;
 			this.printDifferences = false;
 		}
 		System.out.println("Now about to run!");
@@ -336,6 +339,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 
 	public void findChainedClusters() {
 		chainLengths_chains_MAP = new HashMap<Integer, ArrayList<ClusterChain>>();
+
 		int stackSize = this.image.getStackSize();
 		for (sliceNumber = 1; sliceNumber <= stackSize - Color_Segmenter.minClusterChainLength; sliceNumber++) {
 			HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(sliceNumber);
@@ -1072,6 +1076,7 @@ class LimitSelecterFrame extends JFrame {
 		
 		this.postProcessing = new JButton("Run Post-Processing only");
 		postProcessPanel.add(postProcessing);
+		this.postProcessing.setEnabled(false);
 		
 		this.postProcessing.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -1081,13 +1086,6 @@ class LimitSelecterFrame extends JFrame {
 				LimitSelecterFrame.this.cs.runPostProcessing(chainJoiningScaler, majorMinorRatioLimit, minClusterChainLength);
 			}
 		});
-		
-		
-		
-		
-		
-		
-		
 		
 		this.setVisible(true);
 		System.out.println("Made it visible!");
