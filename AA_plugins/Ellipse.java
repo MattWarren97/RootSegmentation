@@ -22,14 +22,28 @@ public class Ellipse {
 			points[i][2] = p.cluster.z;
 			i++;
 		}
-		System.out.println("for chain " + chain + "points length was " + points.length);
+		//System.out.println("for chain " + chain + "points length was " + points.length);
 		Object[] ellipseStats = Ellipse.yuryPetrov(points);
 		double[] centre = (double[]) ellipseStats[0];
 		double[] radii = (double[]) ellipseStats[1];
 		double[][] eigenVectors = (double[][]) ellipseStats[2];
+		double[] equation = (double[]) ellipseStats[3];
 		
-		System.out.println("Centre: " + centre[0] +","+ centre[1] + ","+ centre[2]);
-		System.out.println("Radii: " + radii[0] + ", " + radii[1] + ","+ radii[2]);
+		//System.out.println("Chain with first cluster " + chain.clusters.get(0));
+		//System.out.println("Centre: " + centre[0] +","+ centre[1] + ","+ centre[2]);
+		//System.out.println("Radii: " + radii[0] + ", " + radii[1] + ","+ radii[2]);
+		if (Math.abs(centre[0]) >= 0 && Math.abs(centre[0]) <= 650) {
+			System.out.println("Chain with first cluster " + chain.clusters.get(0));
+			System.out.println("Centre: " + centre[0] +","+ centre[1] + ","+ centre[2]);
+			System.out.println("Radii: " + radii[0] + ", " + radii[1] + ","+ radii[2]);
+			String equationText = "Equation is " + equation[0] + "X^2 + " + equation[1] + "Y^2 + " + equation[2] + "Z^2 + 2*";
+			equationText = equationText+ equation[3] + "xy + 2*" + equation[4] + "xz + 2*" + equation[5] + "yz + 2*";
+			equationText = equationText + equation[6] + "x + 2*" + equation[7] + "y + 2*" + equation[8] + "z = 1";
+			System.out.println(equationText);
+			for (Cluster c: chain.clusters) {
+				System.out.println(c);
+			}
+		}
 	}
 
 	public float getMajorMinorRatio() {

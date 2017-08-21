@@ -413,9 +413,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	private void highlightChains() {
 
-		System.out.println("Chain lengths:");
+		//System.out.println("Chain lengths:");
 		Iterator<Integer> chainLengthsIterator = chainLengths_chains_MAP.keySet().iterator();
-		System.out.println("Highlighting all chains with length longer than " + Color_Segmenter.minClusterChainLength);
+		//System.out.println("Highlighting all chains with length longer than " + Color_Segmenter.minClusterChainLength);
 
 		String lengthsString = "Length: count";
 		while(chainLengthsIterator.hasNext()) {
@@ -445,7 +445,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	//chains should try to join up to other chains (to plug gaps).
 	//short chains (more likely to be noise) should not be joined up so easily as long chains to other long chains
-	public void findConnectedChains() { 
+	public void findConnectedChains() {
 		//for every chain found, fit an ellipse on it to see if it's the right shape.
 		//if it has major/minor of larger than 'majorMinorRatioLimit', 
 		//use the 'chainJoiningScaler' as a scaler (in some way) [alongside using the major axis as a scaler]
@@ -458,17 +458,51 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		Iterator<Integer> chainLengthIter = chainLengths_chains_MAP.keySet().iterator();
 		while(chainLengthIter.hasNext()) {
 			int chainLength = chainLengthIter.next();
-			ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(chainLength);
-			for (ClusterChain chain: chains) {
+			if (chainLength >= Color_Segmenter.minClusterChainLength) {
+				ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(chainLength);
+				ClusterChain chain = null;
+				for (ClusterChain ch: chains) {
+					if (ch.clusters.size() >= 8) {
+						chain = ch;
+						break;
+					}
+				}
+				if (chain == null) {
+					continue;
+				}
+				
+				int whiteColour = 255;
+				ImagePlus iPlusHighlight = this.image.duplicate();
+				for (Cluster c : chain.clusters) {
+					
+					ImageProcessor sliceProcessor = iPlusHighlight.getStack().getProcessor(c.getSliceNumber());
+					byte[] pixels = (byte[]) sliceProcessor.getPixels();
+					
+					for (Point p : c.points) {
+						pixels[p.y*sliceProcessor.getWidth()+p.x] = (byte) whiteColour;
+					}
+					sliceProcessor.setPixels(pixels);
+				}
+				iPlusHighlight.setTitle("One Root");
+				iPlusHighlight.show();
+				ImagePlus ellipseImage = this.image.duplicate();
 				Ellipse ell = findEllipse(chain);
 				chain.setEllipse(ell);
-				if (ell.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
-					ArrayList<ClusterChain> connectors = findChainsInRange(chain);
-					//pick a best one.
-					ClusterChain bestChain = connectors.get(0);
+				break;
+				
 
-					chain.append(bestChain);
-				}
+
+
+
+
+					//if (ell.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
+						//ArrayList<ClusterChain> connectors = findChainsInRange(chain);
+						//pick a best one.
+						//ClusterChain bestChain = connectors.get(0);
+
+						//chain.append(bestChain);
+					//}
+				//}
 			}
 		}
 		
@@ -503,7 +537,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		
 		float centerMoveAverage = (centerDiffTotal/((float)clusters.size()));
 		float centerSmoothness = (centerDiffTotal/centerCrowFlys);
-		System.out.println("Had average: " + centerMoveAverage + ", smoothness: " + centerSmoothness);
+		//System.out.println("Had average: " + centerMoveAverage + ", smoothness: " + centerSmoothness);
 		return centerSmoothness;
 	}
 	
@@ -536,11 +570,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 
 	public void highlight(ClusterChain chain) {
 		ArrayList<Cluster> clusters = chain.clusters;
-		System.out.println("----------------------Highlighting a new chain!-----------------");
-		System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
+		//System.out.println("----------------------Highlighting a new chain!-----------------");
+		//System.out.println("Length is " + clusters.size() + ", First cluster " + clusters.get(0));
 		float centerSmoothness = getCenterSmoothness(chain);
 		float centerMovementVariance = getCenterMovementVariance(chain);
-		System.out.println("smoothness: " + centerSmoothness +", movementVariance: " + centerMovementVariance);
+		//System.out.println("smoothness: " + centerSmoothness +", movementVariance: " + centerMovementVariance);
 		//if (centerSmoothness > 3) {
 		//	System.out.println("Not highlighting - smoothnes is too high! " + centerSmoothness);
 		//	return;
