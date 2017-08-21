@@ -10,4 +10,4 @@
 @echo   both options added to System path succesfully
 
 
-@JAVAC %1 -cp \\Roose_group\M_Warren\Fiji_201610_JAVA8.app\jars\ij-1.51g.jar;\\Roose_group\M_Warren\RootSegmentation\jars\commons-collections4-4.1.jar;\\Roose_group\M_Warren\RootSegmentation\ -d \\Roose_group\M_Warren\Fiji_201610_JAVA8.app\plugins
+@JAVAC %1 -cp "\\Roose_group\M_Warren\Fiji_201610_JAVA8.app\jars\*";\\Roose_group\M_Warren\RootSegmentation\jars\commons-collections4-4.1.jar;\\Roose_group\M_Warren\RootSegmentation\ -d \\Roose_group\M_Warren\Fiji_201610_JAVA8.app\plugins
