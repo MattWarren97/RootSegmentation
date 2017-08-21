@@ -20,7 +20,6 @@ import ij.measure.Calibration;
 import externalPluginCopies.*;
 import externalPluginCopies.FilterPlugin.FilterType;
 
-import org.apache.commons.collections4.bidimap.*;
 
 import java.util.*;
 
