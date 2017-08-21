@@ -83,6 +83,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			Color_Segmenter.aspectRatioDifferenceWeight = options.aspectRatioDifferenceWeight;
 			Color_Segmenter.colourDifferenceWeight = options.colourDifferenceWeight;
 			Color_Segmenter.minClusterChainLength = options.minClusterChainLength;
+			Color_Segmenter.majorMinorRatioLimit = options.majorMinorRatioLimit;
+			Color_Segmenter.chainJoiningScaler = options.chainJoiningScaler;
 
 			this.printDifferences = false;
 
@@ -108,6 +110,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			Color_Segmenter.aspectRatioDifferenceWeight = options.aspectRatioDifferenceWeight;
 			Color_Segmenter.colourDifferenceWeight = options.colourDifferenceWeight;
 			Color_Segmenter.minClusterChainLength = options.minClusterChainLength;
+			Color_Segmenter.majorMinorRatioLimit = options.majorMinorRatioLimit;
+			Color_Segmenter.chainJoiningScaler = options.chainJoiningScaler;
+
 			this.printDifferences = false;
 		}
 		System.out.println("Now about to run!");
@@ -399,7 +404,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 					ImageProcessor ip = Color_Segmenter.this.image.getStack().getProcessor(i);
 					ip.applyTable(Color_Segmenter.lut);
 				}
-				Color_Segmenter.this.filterAndJoinChains();
+				Color_Segmenter.this.findConnectedChains();
 				Color_Segmenter.this.highlightChains();
 			}
 		};
@@ -442,9 +447,41 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	//chains should try to join up to other chains (to plug gaps).
 	//short chains (more likely to be noise) should not be joined up so easily as long chains to other long chains
 	public void findConnectedChains() { 
+		//for every chain found, fit an ellipse on it to see if it's the right shape.
+		//if it has major/minor of larger than 'majorMinorRatioLimit', 
+		//use the 'chainJoiningScaler' as a scaler (in some way) [alongside using the major axis as a scaler]
+		//to look for other roots that begin along a similar angle to the angle of that ellipse.
+		//and connect those chains.
+		//if the major/minor is smaller than 'majorMinorRatioLimit',  don't explicitly try to join 
+		//this chain up with another chain, but it may be that another chain wants to join up to this one
+		//later -- so don't explicitly remove chains that don't fit yet.
+
+		Iterator<Integer> chainLengthIter = chainLengths_chains_MAP.keySet().iterator();
+		while(chainLengthIter.hasNext()) {
+			int chainLength = chainLengthIter.next();
+			ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(chainLength);
+			for (ClusterChain chain: chains) {
+				Ellipse ell = findEllipse(chain);
+				chain.setEllipse(ell);
+				if (ell.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
+					ArrayList<ClusterChain> connectors = findChainsInRange(chain);
+					//pick a best one.
+					ClusterChain bestChain = connectors.get(0);
+
+					chain.append(bestChain);
+				}
+			}
+		}
 		
 		
-		
+	}
+
+	public Ellipse findEllipse(ClusterChain chain) {
+		//make an ellipse. It should have major and minor axes values, and an angle.
+		return new Ellipse(chain);
+	}
+	public ArrayList<ClusterChain> findChainsInRange(ClusterChain chain) {
+		return new ArrayList<ClusterChain>();
 	}
 		
 	
@@ -965,6 +1002,8 @@ class LimitSelecterFrame extends JFrame {
 
 				int minClusterSize = Integer.parseInt(LimitSelecterFrame.this.minClusterSize.getText());
 				int minClusterChainLength = Integer.parseInt(LimitSelecterFrame.this.minClusterChainLength.getText());
+				float majorMinorRatioLimit = Float.parseFloat(LimitSelecterFrame.this.majorMinorRatioLimit.getText());
+				float chainJoiningScaler = Float.parseFloat(LimitSelecterFrame.this.chainJoiningScaler.getText());
 				int maxCenterDistance = Integer.parseInt(LimitSelecterFrame.this.maxCenterDistance.getText());
 				float areaDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.areaDifferenceWeight.getText());
 				float colourDifferenceWeight = Float.parseFloat(LimitSelecterFrame.this.colourDifferenceWeight.getText());
@@ -990,7 +1029,7 @@ class LimitSelecterFrame extends JFrame {
 
 					GUIOptions optionsWithLimits = new GUIOptions(rootLowerBound, rootUpperBound, printMatches,
 						minClusterSize, maxCenterDistance, areaDifferenceWeight, aspectRatioDifferenceWeight,
-						colourDifferenceWeight, minClusterChainLength, 
+						colourDifferenceWeight, minClusterChainLength, majorMinorRatioLimit, chainJoiningScaler,
 						minSliceNumber, maxSliceNumber, minValue, maxValue, minArea, maxArea,
 						minCenterX, maxCenterX, minCenterY, maxCenterY, printDifferences);
 					System.out.println("It was true, now about to run.");
@@ -1000,7 +1039,7 @@ class LimitSelecterFrame extends JFrame {
 
 					GUIOptions optionsNoLimits = new GUIOptions(rootLowerBound, rootUpperBound, printMatches,
 						minClusterSize, maxCenterDistance, areaDifferenceWeight, aspectRatioDifferenceWeight,
-						colourDifferenceWeight, minClusterChainLength);
+						colourDifferenceWeight, minClusterChainLength, majorMinorRatioLimit, chainJoiningScaler);
 					System.out.println("It was false, now about to run");
 					LimitSelecterFrame.this.cs.run(optionsNoLimits);
 				}
@@ -1119,7 +1158,8 @@ class GUIOptions {
 	
 	public GUIOptions(int rootLowerBound, int rootUpperBound, boolean printMatches, int minClusterSize,
 					float maxCenterDistance, float areaDifferenceWeight, float aspectRatioDifferenceWeight, 
-					float colourDifferenceWeight, int minClusterChainLength) {
+					float colourDifferenceWeight, int minClusterChainLength, float majorMinorRatioLimit,
+					float chainJoiningScaler) {
 		
 		this.rootLowerBound = rootLowerBound;
 		this.rootUpperBound = rootUpperBound;
@@ -1130,15 +1170,17 @@ class GUIOptions {
 		this.aspectRatioDifferenceWeight = aspectRatioDifferenceWeight;
 		this.colourDifferenceWeight = colourDifferenceWeight;
 		this.minClusterChainLength = minClusterChainLength;
+		this.majorMinorRatioLimit = majorMinorRatioLimit;
+		this.chainJoiningScaler = chainJoiningScaler;
 
 	}
 
 	public GUIOptions(int rootLowerBound, int rootUpperBound, boolean printMatches, int minClusterSize,
 					float maxCenterDistance, float areaDifferenceWeight, float aspectRatioDifferenceWeight,
-					float colourDifferenceWeight, int minClusterChainLength, int minSliceNumber,
-					int maxSliceNumber, int minValue, int maxValue, int minArea, int maxArea,
-					int minCenterX, int maxCenterX, int minCenterY, int maxCenterY,
-					boolean printDifferences) {
+					float colourDifferenceWeight, int minClusterChainLength, float majorMinorRatioLimit,
+					float chainJoiningScaler, int minSliceNumber, int maxSliceNumber, int minValue, 
+					int maxValue, int minArea, int maxArea, int minCenterX, int maxCenterX, int minCenterY,
+					int maxCenterY,	boolean printDifferences) {
 
 
 		this.rootLowerBound = rootLowerBound;
@@ -1150,6 +1192,8 @@ class GUIOptions {
 		this.aspectRatioDifferenceWeight = aspectRatioDifferenceWeight;
 		this.colourDifferenceWeight = colourDifferenceWeight;
 		this.minClusterChainLength = minClusterChainLength;
+		this.majorMinorRatioLimit = majorMinorRatioLimit;
+		this.chainJoiningScaler = chainJoiningScaler;
 
 		this.minSliceNumber = minSliceNumber;
 		this.maxSliceNumber = maxSliceNumber;

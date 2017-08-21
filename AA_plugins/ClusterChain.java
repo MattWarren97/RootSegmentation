@@ -7,12 +7,17 @@ public class ClusterChain {
 	public ArrayList<Cluster> clusters;
 	public Cluster firstCluster;
 	public Cluster lastCluster;
+	public Ellipse ellipse;
 
 	public ClusterChain(ArrayList<Cluster> clusters) {
 		this.clusters = clusters;
 		this.firstCluster = clusters.get(0);
 		this.lastCluster = clusters.get(clusters.size() - 1);
 		
+	}
+
+	public void setEllipse(Ellipse ell) {
+		this.ellipse = ell;
 	}
 
 	public int getStartSlice() {
