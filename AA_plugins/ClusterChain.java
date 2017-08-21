@@ -33,4 +33,14 @@ public class ClusterChain {
 		this.clusters.addAll(cc.clusters);
 		this.lastCluster = clusters.get(clusters.size() - 1);
 	}
+	
+	public ArrayList<Point> getPointsList() {
+		ArrayList<Point> points = new ArrayList<Point>();
+		for (Cluster c : this.clusters) {
+			for (Point p: c.points) {
+				points.add(p);
+			}
+		}
+		return points;
+	}
 }
