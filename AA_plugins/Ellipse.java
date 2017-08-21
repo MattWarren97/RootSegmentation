@@ -13,21 +13,23 @@ public class Ellipse {
 
 	public Ellipse(ClusterChain chain) {
 		this.chain = chain;
-		double[][] points = new double[chain.clusters.size()][3];
+		ArrayList<Point> pointsList = chain.getPointsList();
+		double[][] points = new double[pointsList.size()][3];
 		int i = 0;
-		for (Cluster c: chain.clusters) {
-			for (Point p: c.points) {
-				points[i][0] = p.x;
-				points[i][1] = p.y;
-				points[i][2] = c.z;
-			}
+		for (Point p: pointsList) {
+			points[i][0] = p.x;
+			points[i][1] = p.y;
+			points[i][2] = p.cluster.z;
+			i++;
 		}
+		System.out.println("for chain " + chain + "points length was " + points.length);
 		Object[] ellipseStats = Ellipse.yuryPetrov(points);
-		final String[] descriptors = {"Centre: ", "Radii: ", "EigenVectors: ", "Equation: ", "EigenValueDecomposition: "};
-		for (i = 0; i < descriptors.length; i++) {
-			System.out.println(descriptors[i] + ellipseStats[i] + ", ");
-		}
-		//System.out.println("centre: " + ellipseStats[0] + ", radii" + ellipseStats[1] + ", eigenVectors " + ellipseStats[2]+ "
+		double[] centre = (double[]) ellipseStats[0];
+		double[] radii = (double[]) ellipseStats[1];
+		double[][] eigenVectors = (double[][]) ellipseStats[2];
+		
+		System.out.println("Centre: " + centre[0] +","+ centre[1] + ","+ centre[2]);
+		System.out.println("Radii: " + radii[0] + ", " + radii[1] + ","+ radii[2]);
 	}
 
 	public float getMajorMinorRatio() {
@@ -72,7 +74,7 @@ public class Ellipse {
 		// pack data up for returning
 		final EigenvalueDecomposition E = (EigenvalueDecomposition) matrices[3];
 		final Matrix eVal = E.getD();
-		final Matrix diagonal = eVal.diag();
+		final Matrix diagonal = Ellipse.diag(eVal);
 		final int nEvals = diagonal.getRowDimension();
 		final double[] radii = new double[nEvals];
 		for (int i = 0; i < nEvals; i++) {
@@ -102,7 +104,7 @@ public class Ellipse {
 
 		// using the centre and 4x4 calculate the
 		// eigendecomposition
-		final Matrix T = Matrix.eye(4);
+		final Matrix T = Ellipse.eye(4);
 		T.setMatrix(3, 3, 0, 2, C.transpose());
 		final Matrix R = T.times(A.times(T.transpose()));
 		final double r33 = R.get(3, 3);
@@ -125,6 +127,33 @@ public class Ellipse {
 			}
 		}
 		return new Matrix(ones);
+	}
+	
+	//source https://github.com/mdoube/BoneJ/blob/master/src/org/doube/jama/Matrix.java
+	public static Matrix eye(final int n) {
+		return Ellipse.eye(n, n);
+	}
+	
+	//source https://github.com/mdoube/BoneJ/blob/master/src/org/doube/jama/Matrix.java
+	public static Matrix eye(final int m, final int n) {
+		final double[][] eye = new double[m][n];
+		final int min = Math.min(m, n);
+		for (int i = 0; i < min; i++) {
+			eye[i][i] = 1;
+		}
+		return new Matrix(eye);
+	}
+	
+	//method modified from https://github.com/mdoube/BoneJ/blob/master/src/org/doube/jama/Matrix.java
+	public static Matrix diag(Matrix matrix) {
+		int m = matrix.getRowDimension();
+		int n = matrix.getColumnDimension();
+		final int min = Math.min(m, n);
+		final double[][] diag = new double[min][1];
+		for (int i = 0; i < min; i++) {
+			diag[i][0] = matrix.get(i, i);
+		}
+		return new Matrix(diag);
 	}
 
 }
