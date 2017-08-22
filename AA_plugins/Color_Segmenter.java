@@ -488,6 +488,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 				ImagePlus ellipseImage = this.image.duplicate();
 				Ellipse ell = findEllipse(chain);
 				chain.setEllipse(ell);
+				System.out.println("Ellipse had radii: " + ell.radiusA + "," + ell.radiusB + "," + ell.radiusC);
+				System.out.println("Ellipse had angle: " + ell.angleDegA + "," + ell.angleDegB + "," + ell.angleDegC);
+				System.out.println("This gives majorMinorRatio of " + ell.getMajorMinorRatio());
 				break;
 				
 
