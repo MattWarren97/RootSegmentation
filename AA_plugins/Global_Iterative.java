@@ -101,7 +101,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		(new ImagePlus("After calculating Distance transform", byteStack)).show();
 		
 		Roi centralRoi = selectionPlugin.selectCentralObject(image);
-		Point contained = centralRoi.getContainedPoints()[0];
+		java.awt.Point contained = centralRoi.getContainedPoints()[0];
 		PointRoi point = new PointRoi(contained.x, contained.y);
 		
 		image.setRoi(point);

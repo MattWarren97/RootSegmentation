@@ -44,7 +44,7 @@ public class Conversion_ implements PlugInFilter  {
 	}
 	
 	public void run(ImageProcessor ip) {
-		System.out.println(ip.getBitDepth());
+		System.out.println("Running with a " + ip.getBitDepth() + "-bit image.");
 		new SelectTopBottom(this);
 		
 	}
