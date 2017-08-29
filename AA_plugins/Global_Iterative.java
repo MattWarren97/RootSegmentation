@@ -51,6 +51,19 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		System.out.println("after findnewmean");
 		run(this.image.getProcessor());
 	}
+
+	public Global_Iterative(ImagePlus image, Roi stackRoi, Roi rootRoi, int topSlice, int bottomSlice) {
+		ImageStack stack = image.getStack();
+		int bottomSliceRelativeToStackEnd = stack.getSize() - bottomSlice;
+		for (int i = 1; i < topSlice; i++) {
+			stack.deleteSlice(1);
+		}
+		for (int i = 0; i < bottomSliceRelativeToStackEnd; i++) {
+			stack.deleteSlice(stack.getSize());
+		}
+
+		this.image = new ImagePlus("Global_Iterative", stack);
+	}
 	
 	public void findNewMean(ImagePlus original, Roi roi) {
 		

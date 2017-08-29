@@ -64,6 +64,11 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	LimitSelecterFrame limitSelecterFrame;
 	
+	public Color_Segmenter(ImagePlus iPlus, GUIOptions options) {
+		this.image = iPlus;
+
+	}
+
 	public void run(ImageProcessor ip) {
 		System.out.println("Creating gui..");
 		this.limitSelecterFrame = new LimitSelecterFrame(this);
