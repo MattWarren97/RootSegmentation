@@ -23,7 +23,8 @@ import externalPluginCopies.FilterPlugin.FilterType;
 public class Global_Iterative extends SegmentationPlugin implements PlugInFilter {
 	
 	static final int MED_RD = 5;
-
+	static final int EDT_THRESHOLD = 5;
+	
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
@@ -95,13 +96,13 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, sliceNumber);
-			corePlugin.applyThreshold(ip, 0, 15);
+			corePlugin.applyThreshold(ip, 0, Global_Iterative.EDT_THRESHOLD);
 		}
 		image = new ImagePlus("distance transformed", byteStack);
 		(new ImagePlus("After calculating Distance transform", byteStack)).show();
 		
 		Roi centralRoi = selectionPlugin.selectCentralObject(image);
-		Point contained = centralRoi.getContainedPoints()[0];
+		java.awt.Point contained = centralRoi.getContainedPoints()[0];
 		PointRoi point = new PointRoi(contained.x, contained.y);
 		
 		image.setRoi(point);

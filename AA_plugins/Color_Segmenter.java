@@ -425,7 +425,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			if (nextLength >= Color_Segmenter.minClusterChainLength) {
 				
 				for (ClusterChain chain : chains) {
-					highlight(chain);
+					
+					Ellipse ell = new Ellipse(chain);
+					if (ell.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
+						highlight(chain);
+						System.out.println("Ratio large enough");
+					}
+					else {
+						System.out.println("ratio too small");
+					}
 				}
 			}
 		}
@@ -491,6 +499,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 				System.out.println("Ellipse had radii: " + ell.radiusA + "," + ell.radiusB + "," + ell.radiusC);
 				System.out.println("Ellipse had angle: " + ell.angleDegA + "," + ell.angleDegB + "," + ell.angleDegC);
 				System.out.println("This gives majorMinorRatio of " + ell.getMajorMinorRatio());
+				System.out.println("Ellipse centre is " + ell.centre[0] + "," + ell.centre[1] + "," + ell.centre[2]);
 				break;
 				
 

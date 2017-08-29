@@ -298,7 +298,7 @@ public class Ellipse {
 		this.radiusA = r1;
 		this.radiusB = r2;
 		this.radiusC = r3;
-		this.angleDegA = angle1;
+		this.angleDegA = toDegrees(angle1);
 		this.angleDegB = toDegrees(angle2);
 		this.angleDegC = toDegrees(angle3);
 
