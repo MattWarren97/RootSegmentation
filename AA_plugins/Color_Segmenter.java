@@ -172,6 +172,8 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		
 	public void run() {
 		
+		//System.out.println("In Color_Segmenter - Image is " + this.image + "\n" +
+			//"First pixel is " + ((byte[]) this.image.getStack().getProcessor(1).getPixels())[0]);
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //TODO does this need to be synchronised?
 		this.pairedClustersBySlice = new HashMap<Integer, HashMap<Cluster, Cluster>>();
 		
@@ -480,7 +482,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			}
 		}
 		System.out.println(lengthsString);
-		this.duplicateImage.show();
+		//this.duplicateImage.show();
 	}
 	
 	//using Color_Segmenter.majorMinorRatioLimit and Color_Segmenter.chainJoiningScaler --
@@ -682,6 +684,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			System.out.println("Gives a final score of " + comparison);
 		}
 		return comparison;
+	}
+
+	public void setImageTitle() {
+		this.image.setTitle("Color_Segmenter Image");
 	}
 
 }

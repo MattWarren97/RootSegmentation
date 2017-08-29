@@ -20,7 +20,7 @@ import externalPluginCopies.FilterPlugin.FilterType;
 
 public class Global_Threshold extends SegmentationPlugin implements PlugInFilter {
 	
-	ImagePlus image;
+	//ImagePlus image;
 	
 	public Global_Threshold(ImagePlus image) {
 		super();
@@ -30,6 +30,9 @@ public class Global_Threshold extends SegmentationPlugin implements PlugInFilter
 	
 	public void run() {
 		System.out.println("Begin Global Thresholding");
+
+		System.out.println("In Global_Threshold - Image is " + this.image + "\n" +
+			"First pixel is " + ((byte[]) this.image.getStack().getProcessor(1).getPixels())[0]);
 		ImageConverter ic = new ImageConverter(this.image);
 		ic.convertToGray8();
 		
@@ -70,5 +73,12 @@ public class Global_Threshold extends SegmentationPlugin implements PlugInFilter
 	public void showAbout() {
 		System.out.println("Applies a threshold to the entire image");
 	}
+
+	public void setImageTitle() {
+		this.image.setTitle("Global_Threshold image");
+		//System.out.println("In Threshold: image is " + this.image);
+	}
+
+	
 	
 }

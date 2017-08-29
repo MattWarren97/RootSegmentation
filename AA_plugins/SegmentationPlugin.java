@@ -23,7 +23,7 @@ import externalPluginCopies.FilterPlugin.FilterType;
 public abstract class SegmentationPlugin implements PlugInFilter, Runnable {
 	
 	ImagePlus image;
-	ImagePlus duplicateImage;
+	//ImagePlus duplicateImage;
 	public int X;
 	public int Y;
 	public int Z;
@@ -72,10 +72,17 @@ public abstract class SegmentationPlugin implements PlugInFilter, Runnable {
 	}
 	
 	public void duplicateImage() {
-		this.duplicateImage = this.image.duplicate();
-		this.duplicateImage.setTitle("Original Image");
+		this.image = this.image.duplicate();
+		this.image.setTitle("Duplicate of Original Image");
 		System.out.println("Duplicated image");
 	}
+	public abstract void setImageTitle();
 	
+	public ImagePlus getImage() {
+		if (this.image == null) {
+			System.out.println("Image is null");
+		}
+		return this.image;
+	}
 	
 }

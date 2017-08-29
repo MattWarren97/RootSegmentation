@@ -80,13 +80,14 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		
 		selectionPlugin.applyRoi(original, roi, stackRoi);
 		
-		int measurements = Measurements.MEAN; //+ Measurements.STD_DEV;
+		int measurements = Measurements.MEAN + Measurements.AREA; //+ Measurements.STD_DEV;
 		
 		ResultsTable rt = new ResultsTable();
 		Analyzer an = new Analyzer(original, measurements, rt);
 		
 		an.measure();
 		double newMean = rt.getValue("Mean", rt.getCounter()-1);
+		//System.out.println(rt.getValue("Area", rt.getCounter()-1));
 		//double newStd = rt.getValue("StdDev", rt.getCounter()-1);
 		
 		gauss_mean = newMean;
@@ -98,6 +99,13 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	}
 	
 	public void run() {
+
+		this.duplicateImage();
+		//this.duplicateImage.show();
+
+		System.out.println("In Global_Iterative - Image is " + this.image + "\n" +
+			"First pixel is " + ((byte[]) this.image.getStack().getProcessor(1).getPixels())[0]);
+
 		ImageProcessor ip;
 		System.out.println("Beginning Global Iterative process");
 		
@@ -143,7 +151,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 			byteStack.setProcessor(ip, sliceNumber);
 			corePlugin.applyThreshold(ip, 1, 255); //original image returns binary pixel values.
 		}
-		image = new ImagePlus("Final 8-bit display", byteStack);
+		image = new ImagePlus("Final display after automatic connectedRegions on central object", byteStack);
 		image.show();
 		
 		//corePlugin.applyThreshold(ip, 0, 11);
@@ -171,6 +179,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 
 		Roi selectionRoi = selectionPlugin.selectFromMask(iPlus);
 		
+		//Normal -- System.out.println("Width, height -  is " + iPlus.getWidth() + "," + iPlus.getHeight());
+		
 		findNewMean(iPlusCopy, selectionRoi);
 		
 	}
@@ -179,6 +189,10 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		
 	public void showAbout() {
 		IJ.showMessage("About Segmentation_...", "Attempt 1 -- method copied as closely as possible from Laura and Dan's.");
+	}
+
+	public void setImageTitle() {
+		this.image.setTitle("Global_Iterative Image");
 	}
 	
 }

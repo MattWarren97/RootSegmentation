@@ -38,7 +38,9 @@ public class CorePlugin {
 			offset = y*width;
 			for (int x = r.x; x < (r.x+r.width); x++) {
 				i = offset+x;
-				double newValue = Math.floor((Math.exp(-((Math.pow(pixels[i]-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
+				byte orig_value = pixels[i];
+				int unsignedValue = orig_value & 0xFF;
+				double newValue = Math.floor((Math.exp(-((Math.pow(unsignedValue-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
 				int newInt = (int) newValue;
 				byte newByte = (byte) newInt;
 				pixels[i] = newByte;

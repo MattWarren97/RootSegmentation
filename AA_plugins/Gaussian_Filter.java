@@ -18,8 +18,8 @@ import externalPluginCopies.*;
 
 public class Gaussian_Filter implements PlugInFilter{
 	
-	double gauss_mean = 97; //for slice 157/158.
-	double gauss_std = 6;
+	double gauss_mean = 148; 
+	double gauss_std = 10;
 	
 	public void run(ImageProcessor ip) {
 		//It would be quicker to find the gaussianValue for each pixel, then decide whether it meets the threshold criteria and create the mask pixel by pixel.
@@ -35,11 +35,17 @@ public class Gaussian_Filter implements PlugInFilter{
 		//System.err.println("Width: " + r.width + ", Height: " + r.height + ", y: " + r.y + ", x: " + r.x);
 
 		int offset, i;
+
+		System.out.println("In the gaussian function, gauss_mean is " + gauss_mean+", gauss_std is " + gauss_std);
 		for (int y = r.y; y < (r.y+r.height); y++) {
 			offset = y*width;
 			for (int x = r.x; x < (r.x+r.width); x++) {
 				i = offset+x;
-				double newValue = Math.floor((Math.exp(-((Math.pow(pixels[i]-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
+				byte orig_value = pixels[i];
+				int unsignedValue = orig_value & 0xFF;
+				double newValue = Math.floor((Math.exp(-((Math.pow(unsignedValue-gauss_mean, 2)/(2*Math.pow(gauss_std, 2))))))*255);
+				//System.out.println(orig_value + " - " + unsignedValue + " - " + ((byte) orig_value));
+				//System.out.println(orig_value + "- " + newValue);
 				int newInt = (int) newValue;
 				byte newByte = (byte) newInt;
 				pixels[i] = newByte;

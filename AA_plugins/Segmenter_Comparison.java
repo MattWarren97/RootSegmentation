@@ -105,7 +105,15 @@ public class Segmenter_Comparison implements PlugInFilter {
 		this.toBeRun.add(plugin);
 		this.listFrame.updateTable(plugin);
 		System.out.println("added a new plugin " + plugin);
+		this.duplicateImage();
 		new ConversionFrame(this);
+	}
+
+	public void duplicateImage() {
+		this.image = this.image.duplicate();
+		this.image.setTitle("Duplicate of Original Image");
+		System.out.println("Duplicated image");
+
 	}
 
 	public void addGlobalThreshold() {
@@ -193,7 +201,7 @@ public class Segmenter_Comparison implements PlugInFilter {
 			stack.deleteSlice(stack.getSize());
 		}
 
-		return new ImagePlus("Global_Iterative", stack);
+		return new ImagePlus("New_ImageCrop", stack);
 	}
 
 
@@ -526,7 +534,11 @@ class SegmentationListFrame extends BasicFrame {
 				System.out.println("plugins size is " + SegmentationListFrame.this.plugins.size());
 
 				for (SegmentationPlugin plugin: SegmentationListFrame.this.plugins) {
-					System.out.println("For: " + plugin + " - have started running.");
+					plugin.setImageTitle();
+					System.out.println("Image:" + plugin.getImage());
+					System.out.println("stack:" + plugin.image.getStack());
+					System.out.println("For: " + plugin + " - have started running.\n" + 
+						"image is " + plugin.image + ", pixels = " + plugin.image.getStack().getProcessor(1).getPixels());
 					Thread t = new Thread(plugin);
 					t.start();
 				}

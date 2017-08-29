@@ -427,6 +427,9 @@ public class SelectionPlugin {
 	
 	//method 'and()' from https://imagej.nih.gov/ij/developer/source/ij/plugin/frame/RoiManager.java.html
 	public ShapeRoi andRoi(Roi a, Roi b) {
+        if (a == null) {
+            System.out.println("a is null");
+        }
 		ShapeRoi s1 = new ShapeRoi(a);
 		ShapeRoi s2 = new ShapeRoi(b);
 		if (s1 == null || s2 == null) {
