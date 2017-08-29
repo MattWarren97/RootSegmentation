@@ -4,7 +4,7 @@ import ij.*; //   \\Cseg_2\erc\ADMIN\Programmes\Fiji_201610_JAVA8.app\jars\ij-1.
 import ij.plugin.filter.PlugInFilter;
 import ij.process.*;
 import java.awt.*;
-import java.util.Arrays;
+import java.util.*;
 import ij.macro.Interpreter;
 import ij.plugin.Selection;
 import ij.plugin.ImageCalculator;
@@ -37,12 +37,13 @@ public class Segmenter_Comparison implements PlugInFilter {
 	public Roi rootRoi;
 
 	public ArrayList<SegmentationPlugin> toBeRun;
-
+	SegmentationListFrame listFrame;
 
 
 	public Segmenter_Comparison() {
 		System.err.println("Initialising log");
 		this.toBeRun = new ArrayList<SegmentationPlugin>();
+		this.listFrame = new SegmentationListFrame(toBeRun);
 	}
 
 	public int setup(String arg, ImagePlus imp) {
@@ -102,54 +103,66 @@ public class Segmenter_Comparison implements PlugInFilter {
 
 	public void addPlugin(SegmentationPlugin plugin) {
 		this.toBeRun.add(plugin);
+		this.listFrame.updateTable(plugin);
+		System.out.println("added a new plugin " + plugin);
+		new ConversionFrame(this);
 	}
 
 	public void addGlobalThreshold() {
 		Runnable r = new Runnable() {
 			public void run() {
-				ImagePlus iPlus = cropImage(this.lowerSliceLimit, this.upperSliceLimit);
+				ImagePlus iPlus = cropImage(Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
 				adjustBrightnessContrast(iPlus);
 
-				Segmenter_Comparison.this.getOptions(Method.GLOBAL_THRESHOLD);
-
-				//Segmenter_Comparison.this.addPlugin(new Global_Threshold());
+				Global_Threshold gt = new Global_Threshold(iPlus);
+				Segmenter_Comparison.this.addPlugin(gt);
 			}
-		}
+		};
 		Thread t = new Thread(r);
 		t.start();
-
-
 	}
+	
 	
 	public void addColorBlobs() {
 		Runnable r = new Runnable() {
 			public void run() {
-				ImagePlus iPlus = cropImage(this.lowerSliceLimit, this.upperSliceLimit);
+				ImagePlus iPlus = cropImage(Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
 				adjustBrightnessContrast(iPlus);
 
 				Segmenter_Comparison.this.getOptions(Method.COLOR_BLOBS);
 				//Color_Segmenter cs = new Color_Segmenter(iPlus, )
 				//Segmenter_Comparison.this.addPlugin(cs);
 			}
-		}
+		};
 		Thread t = new Thread(r);
 		t.start();
-
 	}
+	
+	public void addCS(ColorBlobOptions options) {
+		Color_Segmenter cs = new Color_Segmenter(this.image, options);
+		this.addPlugin(cs);
+	}
+		
 
 	public void addGlobalIterative() {
 		Runnable r = new Runnable() {
 			public void run() {
-				ImagePlus iPlus = cropImage(this.lowerSliceLimit, this.upperSliceLimit);
+				ImagePlus iPlus = cropImage(Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
 				adjustBrightnessContrast(iPlus);
 
+				System.out.println("Should be a Global_Iterative options menu now!");
 				Segmenter_Comparison.this.getOptions(Method.GLOBAL_ITERATIVE);
 				//Segmenter_Comparison.this.addPlugin(new Global_Iterative());
 			}
-		}
+		};
 		Thread t = new Thread(r);
 		t.start();
 
+	}
+	
+	public void addGI(float stdDev, int EDT_Threshold) {
+		Global_Iterative gi = new Global_Iterative(this.image, this.stackRoi, this.rootRoi, stdDev, EDT_Threshold);
+		this.addPlugin(gi);
 	}
 
 	public void adjustBrightnessContrast(ImagePlus image) {
@@ -186,11 +199,11 @@ public class Segmenter_Comparison implements PlugInFilter {
 
 	public void getOptions(Method method) {
 		if (method == Method.COLOR_BLOBS) {
-			new Color_Blob_Limits();
+			new ColorBlobOptionsFrame(this);
 		}
 
 		else if (method == Method.GLOBAL_ITERATIVE) {
-
+			new GlobalIterativeOptionsFrame(this);
 		}
 
 		else if (method == Method.GLOBAL_THRESHOLD) {
@@ -206,10 +219,9 @@ enum Method {
 }
 
 class BasicFrame extends JFrame {
-	Segmenter_Comparison plugin;
 	
-	public BasicFrame(Segmenter_Comparison plugin) {
-		this.plugin = plugin;
+	
+	public BasicFrame() {
 		this.setTitle("Segmentation");
 		this.setSize(500,500);
 		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -219,6 +231,7 @@ class BasicFrame extends JFrame {
 
 class ConversionFrame extends BasicFrame {
 
+	Segmenter_Comparison plugin;
 	JLabel methodSelectionInstruction;
 	JRadioButton globalIterative;
 	JRadioButton globalThreshold;
@@ -245,7 +258,8 @@ class ConversionFrame extends BasicFrame {
 	JButton firstRootSelected;
 
 	public ConversionFrame(Segmenter_Comparison plugin) {
-		super(plugin);
+		super();
+		this.plugin = plugin;
 
 		methodSelectionInstruction = new JLabel("Select which method to set-up");
 		globalThreshold = new JRadioButton(Method.GLOBAL_THRESHOLD.toString(), false);
@@ -365,7 +379,7 @@ class ConversionFrame extends BasicFrame {
 					JOptionPane.showMessageDialog(null, "Please select all the roots on the initial slice");
 					return;
 				}
-				ConversionFrame.this.plugin.setRootRoi(rootRoi);
+				ConversionFrame.this.setRootRoi(rootRoi);
 				//ConversionFrame.this.disableRootSelection();
 
 			}
@@ -382,7 +396,7 @@ class ConversionFrame extends BasicFrame {
 	public void setMethod(Method method) {
 		this.method = method;
 		if (this.method == Method.GLOBAL_ITERATIVE) {
-			System.out.println("Selected GLobal_Iterative method!");
+			System.out.println("Selected Global_Iterative method!");
 			this.disableMethodSelection();
 			this.enableSliceSelection();
 		}
@@ -427,7 +441,15 @@ class ConversionFrame extends BasicFrame {
 			if (this.method == Method.COLOR_BLOBS) {
 				this.plugin.addColorBlobs();
 			}
+			this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
 		}
+		
+	}
+	
+	public void setRootRoi(Roi roi) {
+		this.plugin.setRootRoi(roi);
+		this.displayedSlice.close();
+		this.plugin.addGlobalIterative();
 		this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
 	}
 
@@ -486,253 +508,55 @@ class ConversionFrame extends BasicFrame {
 	}
 }
 
-
-
-class Color_Blob_Limits extends JFrame {
-	Color_Segmenter cs;
-	JButton run;
-	JButton postProcessing;
-	JTextField rootLowerBound;
-	JTextField rootUpperBound;
-	JCheckBox printMatches;
-	JCheckBox printDifferences;
+class SegmentationListFrame extends BasicFrame {
+	ArrayList<SegmentationPlugin> plugins;
 	
-	JTextField minSliceNumber;
-	JTextField maxSliceNumber;
-	JTextField minValue;
-	JTextField maxValue;
-	JTextField minCenterX;
-	JTextField minCenterY;
-	JTextField maxCenterX;
-	JTextField maxCenterY;
-	JTextField minArea, maxArea;
-	JTextField chainJoiningScaler;
-	JTextField majorMinorRatioLimit;
-
-	JTextField colourDifferenceWeight, areaDifferenceWeight, aspectRatioDifferenceWeight;
-	JTextField minClusterSize, minClusterChainLength, maxCenterDistance;
+	JTextArea info;
+	JButton startProcessing;
 	
-	public Color_Blob_Limits(Color_Segmenter cs) {
-		this.cs = cs;
-		
-		this.setTitle("Select limits");
-		this.setSize(550,750);
-		this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-		this.setLayout(new FlowLayout());
-		
-		this.add(new JLabel("Root lower bound (5 bit)"));
-		this.rootLowerBound = new JTextField("", 3);
-		this.add(rootLowerBound);
-		
-		this.add(new JLabel("Root upper bound (5 bit)"));
-		this.rootUpperBound = new JTextField("", 3);
-		this.add(rootUpperBound);
-		
-		this.printMatches = new JCheckBox("Print matches?", false);
-		this.add(printMatches);
-		this.printDifferences = new JCheckBox("Print differences?", false);
-		this.printDifferences.setEnabled(false);
-		this.add(printDifferences);
-		
-		JPanel limitPanel = new JPanel();
-		limitPanel.setLayout(new BoxLayout(limitPanel, BoxLayout.Y_AXIS));
-		this.add(limitPanel);
-		
 	
-		limitPanel.add(new JLabel("min slice number"));
-		this.minSliceNumber = new JTextField("", 3);
-		this.minSliceNumber.setEnabled(false);
-		limitPanel.add(minSliceNumber);
-		
-		limitPanel.add(new JLabel("max slice number"));
-		this.maxSliceNumber = new JTextField("", 3);
-		this.maxSliceNumber.setEnabled(false);
-		limitPanel.add(maxSliceNumber);
-		
-		limitPanel.add(new JLabel("min value"));
-		this.minValue = new JTextField("", 3);
-		this.minValue.setEnabled(false);
-		limitPanel.add(minValue);
-		
-		limitPanel.add(new JLabel("maxValue"));
-		this.maxValue = new JTextField("", 3);
-		this.maxValue.setEnabled(false);
-		limitPanel.add(maxValue);
-		
-		limitPanel.add(new JLabel("minArea"));
-		this.minArea = new JTextField("", 3);
-		this.minArea.setEnabled(false);
-		limitPanel.add(minArea);
-		
-		limitPanel.add(new JLabel("maxArea"));
-		this.maxArea = new JTextField("", 3);
-		this.maxArea.setEnabled(false);
-		limitPanel.add(maxArea);
-		
-		limitPanel.add(new JLabel("minCenterX"));
-		this.minCenterX = new JTextField("", 3);
-		this.minCenterX.setEnabled(false);
-		limitPanel.add(minCenterX);
-		
-		limitPanel.add(new JLabel("maxCenterX"));
-		this.maxCenterX = new JTextField("", 3);
-		this.maxCenterX.setEnabled(false);
-		limitPanel.add(maxCenterX);
-		
-		limitPanel.add(new JLabel("minCenterY"));
-		this.minCenterY = new JTextField("", 3);
-		this.minCenterY.setEnabled(false);
-		limitPanel.add(minCenterY);
-		
-		limitPanel.add(new JLabel("maxCenterY"));
-		this.maxCenterY = new JTextField("", 3);
-		this.maxCenterY.setEnabled(false);
-		limitPanel.add(maxCenterY);
-		
-		this.run = new JButton("RUN");
-
-		this.run.addActionListener(new ActionListener() {
+	public SegmentationListFrame(ArrayList<SegmentationPlugin> pluginsToRun) {
+		super();
+		this.plugins = pluginsToRun;
+		this.info = new JTextArea("Plugins in queue:",30,6);
+		this.startProcessing = new JButton("Start Processing");
+		this.startProcessing.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("Run action performed");
-				int rootLowerBound = Integer.parseInt(Color_Blob_Limits.this.rootLowerBound.getText());
-				int rootUpperBound = Integer.parseInt(Color_Blob_Limits.this.rootUpperBound.getText());
-				boolean printMatches = Color_Blob_Limits.this.printMatches.isSelected();
-				int minSliceNumber, maxSliceNumber, minValue, maxValue;
-				int minArea, maxArea, minCenterX, maxCenterX, minCenterY, maxCenterY;
-				boolean printDifferences;
+				System.out.println("Run button pressed!");
+				System.out.println("plugins size is " + SegmentationListFrame.this.plugins.size());
 
-				int minClusterSize = Integer.parseInt(Color_Blob_Limits.this.minClusterSize.getText());
-				int minClusterChainLength = Integer.parseInt(Color_Blob_Limits.this.minClusterChainLength.getText());
-				float majorMinorRatioLimit = Float.parseFloat(Color_Blob_Limits.this.majorMinorRatioLimit.getText());
-				float chainJoiningScaler = Float.parseFloat(Color_Blob_Limits.this.chainJoiningScaler.getText());
-				int maxCenterDistance = Integer.parseInt(Color_Blob_Limits.this.maxCenterDistance.getText());
-				float areaDifferenceWeight = Float.parseFloat(Color_Blob_Limits.this.areaDifferenceWeight.getText());
-				float colourDifferenceWeight = Float.parseFloat(Color_Blob_Limits.this.colourDifferenceWeight.getText());
-				float aspectRatioDifferenceWeight = Float.parseFloat(Color_Blob_Limits.this.aspectRatioDifferenceWeight.getText());
-
-				Color_Blob_Limits.this.run.setEnabled(false);
-				Color_Blob_Limits.this.postProcessing.setEnabled(false);
-
-				if (printMatches) {
-
-
-					minSliceNumber = Integer.parseInt(Color_Blob_Limits.this.minSliceNumber.getText());
-					maxSliceNumber = Integer.parseInt(Color_Blob_Limits.this.maxSliceNumber.getText());
-					minValue = Integer.parseInt(Color_Blob_Limits.this.minValue.getText());
-					maxValue = Integer.parseInt(Color_Blob_Limits.this.maxValue.getText());
-					minArea = Integer.parseInt(Color_Blob_Limits.this.minArea.getText());
-					maxArea = Integer.parseInt(Color_Blob_Limits.this.maxArea.getText());
-					minCenterX = Integer.parseInt(Color_Blob_Limits.this.minCenterX.getText());
-					maxCenterX = Integer.parseInt(Color_Blob_Limits.this.maxCenterX.getText());
-					minCenterY = Integer.parseInt(Color_Blob_Limits.this.minCenterY.getText());
-					maxCenterY = Integer.parseInt(Color_Blob_Limits.this.maxCenterY.getText());
-					printDifferences = Color_Blob_Limits.this.printDifferences.isSelected();
-
-					GUIOptions optionsWithLimits = new GUIOptions(rootLowerBound, rootUpperBound, printMatches,
-						minClusterSize, maxCenterDistance, areaDifferenceWeight, aspectRatioDifferenceWeight,
-						colourDifferenceWeight, minClusterChainLength, majorMinorRatioLimit, chainJoiningScaler,
-						minSliceNumber, maxSliceNumber, minValue, maxValue, minArea, maxArea,
-						minCenterX, maxCenterX, minCenterY, maxCenterY, printDifferences);
-					System.out.println("It was true, now about to run.");
-					Color_Blob_Limits.this.cs.run(optionsWithLimits);
-				}				
-				else {
-
-					GUIOptions optionsNoLimits = new GUIOptions(rootLowerBound, rootUpperBound, printMatches,
-						minClusterSize, maxCenterDistance, areaDifferenceWeight, aspectRatioDifferenceWeight,
-						colourDifferenceWeight, minClusterChainLength, majorMinorRatioLimit, chainJoiningScaler);
-					System.out.println("It was false, now about to run");
-					Color_Blob_Limits.this.setOptions(optionsNoLimits);
+				for (SegmentationPlugin plugin: SegmentationListFrame.this.plugins) {
+					System.out.println("For: " + plugin + " - have started running.");
+					Thread t = new Thread(plugin);
+					t.start();
 				}
-				System.out.println("done in actionListener");
-			}
-		});
-
-		this.add(run);
-
-		
-		this.printMatches.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				System.out.println("Toggling boxes.");
-				boolean selected = Color_Blob_Limits.this.printMatches.isSelected();
-				Color_Blob_Limits.this.minSliceNumber.setEnabled(selected);
-				Color_Blob_Limits.this.maxSliceNumber.setEnabled(selected);
-				Color_Blob_Limits.this.minValue.setEnabled(selected);
-				Color_Blob_Limits.this.maxValue.setEnabled(selected);
-				Color_Blob_Limits.this.minArea.setEnabled(selected);
-				Color_Blob_Limits.this.maxArea.setEnabled(selected);
-				Color_Blob_Limits.this.minCenterX.setEnabled(selected);
-				Color_Blob_Limits.this.maxCenterX.setEnabled(selected);
-				Color_Blob_Limits.this.minCenterY.setEnabled(selected);
-				Color_Blob_Limits.this.maxCenterY.setEnabled(selected);
-				Color_Blob_Limits.this.printDifferences.setEnabled(selected);
 			}
 		});
 		
-		JPanel constantsPanel = new JPanel();
-		constantsPanel.setLayout(new BoxLayout(constantsPanel, BoxLayout.Y_AXIS));
-		this.add(constantsPanel);
-
-
-		constantsPanel.add(new JLabel("minClusterSize"));
-		this.minClusterSize = new JTextField("20", 5);
-		constantsPanel.add(minClusterSize);
-		
-		constantsPanel.add(new JLabel("maxCenterDistance"));
-		this.maxCenterDistance = new JTextField("5", 5);
-		constantsPanel.add(maxCenterDistance);
-
-		constantsPanel.add(new JLabel("areaDifferenceWeight"));
-		this.areaDifferenceWeight = new JTextField("5.0", 5);
-		constantsPanel.add(areaDifferenceWeight);
-
-		constantsPanel.add(new JLabel("colourDifferenceWeight"));
-		this.colourDifferenceWeight = new JTextField("0.1", 5);
-		constantsPanel.add(colourDifferenceWeight);
-
-		constantsPanel.add(new JLabel("aspectRatioDifferenceWeight"));
-		this.aspectRatioDifferenceWeight = new JTextField("1.0", 5);
-		constantsPanel.add(aspectRatioDifferenceWeight);
-
-
-
-		
-		JPanel postProcessPanel = new JPanel();
-		postProcessPanel.setLayout(new BoxLayout(postProcessPanel, BoxLayout.Y_AXIS));
-		this.add(postProcessPanel);
-		postProcessPanel.add(new JLabel("Modify post-processing constants"));
-		
-		postProcessPanel.add(new JLabel("minClusterChainLength"));
-		this.minClusterChainLength = new JTextField("15", 5);
-		postProcessPanel.add(minClusterChainLength);
-		
-		postProcessPanel.add(new JLabel("chainJoiningScaler"));
-		this.chainJoiningScaler = new JTextField("1", 5);
-		postProcessPanel.add(chainJoiningScaler);
-		
-		postProcessPanel.add(new JLabel("majorMinorRatioLimit"));
-		this.majorMinorRatioLimit = new JTextField("2", 5);
-		postProcessPanel.add(majorMinorRatioLimit);
-		
-		this.postProcessing = new JButton("Run Post-Processing only");
-		postProcessPanel.add(postProcessing);
-		this.postProcessing.setEnabled(false);
-		
-		this.postProcessing.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int minClusterChainLength = Integer.parseInt(Color_Blob_Limits.this.minClusterChainLength.getText());
-				float majorMinorRatioLimit = Float.parseFloat(Color_Blob_Limits.this.majorMinorRatioLimit.getText());
-				float chainJoiningScaler = Float.parseFloat(Color_Blob_Limits.this.chainJoiningScaler.getText());
-				Color_Blob_Limits.this.cs.runPostProcessing(chainJoiningScaler, majorMinorRatioLimit, minClusterChainLength);
-			}
-		});
-		
+		this.add(info);
+		this.add(startProcessing);
 		this.setVisible(true);
-		System.out.println("Made it visible!");
+				
 	}
-
-	public void enableRun() {
-		this.run.setEnabled(true);
-		this.postProcessing.setEnabled(true);
+	
+	/*public void paintComponent(Graphics g) {
+		this.info.setText("");
+		for (SegmentationPlugin plugin: plugins) {
+			this.info.append(plugin.toString());
+		}
+		
+		
+	}*/
+	
+	public void updateTable(SegmentationPlugin plugin) {
+		this.info.append("\n" + plugin);
+		this.info.update(this.info.getGraphics());
 	}
+	
+		
 }
+			
+
+
+
+

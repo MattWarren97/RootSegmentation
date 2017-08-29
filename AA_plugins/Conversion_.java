@@ -17,6 +17,7 @@ import ij.gui.Roi;
 import ij.plugin.filter.EDM;
 import ij.gui.OvalRoi;
 import ij.measure.Calibration;
+import ij.io.FileSaver;
 import externalPluginCopies.*;
 import externalPluginCopies.FilterPlugin.FilterType;
 import javax.swing.*;
@@ -368,7 +369,8 @@ class SelectFirstRoot extends BasicFrame {
 						JOptionPane.showMessageDialog(null, "Please select an roi, then click 'Selected top ellipse'");
 					}
 					else {
-						SelectFirstRoot.this.runGlobalIterative(firstSliceRoi);
+						SelectFirstRoot.this.completedSelection(firstSliceRoi);
+						
 					}
 			}
 		});
@@ -378,6 +380,13 @@ class SelectFirstRoot extends BasicFrame {
 	
 	public void runGlobalIterative(Roi firstSliceRoi) {
 		this.plugin.runGlobalIterative(firstSliceRoi);
+	}
+	
+	public void completedSelection(Roi firstSliceRoi) {
+		ImagePlus image = new ImagePlus("8-bit cropped image", this.stack);
+		image.saveRoi();
+		FileSaver saver = new FileSaver(image);
+		saver.saveAsTiff("../RootSegmentation/resultComparison");
 	}
 }
 		

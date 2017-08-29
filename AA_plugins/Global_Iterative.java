@@ -27,7 +27,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 	double gauss_mean;
 	double gauss_std;
 	ImageProcessor ipCopy;
-	Roi outerRoi;
+	Roi stackRoi;
+	int EDT_Threshold;
 
 	public Global_Iterative() {
 		super();
@@ -37,22 +38,31 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		//Image B... I think.
 		//gauss_mean = 126;
 		//gauss_std = 18;
-		gauss_mean = 73.5;
 		gauss_std = 10;
+		gauss_mean = 101;
+		EDT_Threshold = 5;
 	}
 	
-	public Global_Iterative(ImagePlus image, Roi initialRoi, Roi outerRoi) {
+	public Global_Iterative(ImagePlus image, Roi stackRoi, Roi rootRoi, float stdDev, int EDT_Threshold) {
 		super();
-		this.outerRoi = outerRoi;
+		this.stackRoi = stackRoi;
 		this.setup("", image);
-		gauss_std = 20;
-		System.out.println("before findnewmean");
-		findNewMean(new ImagePlus("ip", image.getStack().getProcessor(1)), initialRoi);
-		System.out.println("after findnewmean");
-		run(this.image.getProcessor());
+		
+		this.gauss_std = stdDev;
+		this.EDT_Threshold = EDT_Threshold;
+		findNewMean(new ImagePlus("ip", image.getStack().getProcessor(1)), rootRoi);
+		//this.run();
 	}
 
 	public Global_Iterative(ImagePlus image, Roi stackRoi, Roi rootRoi, int topSlice, int bottomSlice) {
+		super();
+		this.stackRoi = stackRoi;
+		this.setup("", image);
+		
+		this.gauss_std = 10;
+		this.EDT_Threshold = 5;
+		
+		findNewMean(new ImagePlus("ip", image.getStack().getProcessor(1)), rootRoi);
 		ImageStack stack = image.getStack();
 		int bottomSliceRelativeToStackEnd = stack.getSize() - bottomSlice;
 		for (int i = 1; i < topSlice; i++) {
@@ -63,11 +73,12 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		}
 
 		this.image = new ImagePlus("Global_Iterative", stack);
+		this.run();
 	}
 	
 	public void findNewMean(ImagePlus original, Roi roi) {
 		
-		selectionPlugin.applyRoi(original, roi, outerRoi);
+		selectionPlugin.applyRoi(original, roi, stackRoi);
 		
 		int measurements = Measurements.MEAN; //+ Measurements.STD_DEV;
 		
@@ -86,7 +97,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		original.deleteRoi();
 	}
 	
-	public void run(ImageProcessor ip) {
+	public void run() {
+		ImageProcessor ip;
 		System.out.println("Beginning Global Iterative process");
 		
 		ImageStack stack = image.getStack();
@@ -135,9 +147,12 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		image.show();
 		
 		//corePlugin.applyThreshold(ip, 0, 11);
-		
 	}
-		
+	
+	public void run(ImageProcessor ip) {
+		this.run();
+	}
+
 	public void calculate(ImageProcessor ip) {
 		
 		//System.err.println("Ooh look I'm running its me I'm running ooh look");

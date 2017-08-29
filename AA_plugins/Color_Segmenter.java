@@ -20,7 +20,6 @@ import ij.measure.Calibration;
 import externalPluginCopies.*;
 import externalPluginCopies.FilterPlugin.FilterType;
 
-
 import java.util.*;
 
 public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter, Runnable {
@@ -64,9 +63,55 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	LimitSelecterFrame limitSelecterFrame;
 	
-	public Color_Segmenter(ImagePlus iPlus, GUIOptions options) {
+	//public String toString() {
+		//String toReturn = "";
+		
+		
+	public Color_Segmenter(ImagePlus iPlus, ColorBlobOptions options) {
 		this.image = iPlus;
+		this.duplicateImage();
+		if (options.printMatches) {
+			ObjectFinder.rootLowerBound = options.rootLowerBound;
+			ObjectFinder.rootUpperBound = options.rootUpperBound;
+			this.printMatches = true;
+			Color_Segmenter.minClusterSize = options.minClusterSize;
+			Color_Segmenter.maxCenterDistance = options.maxCenterDistance;
+			Color_Segmenter.areaDifferenceWeight = options.areaDifferenceWeight;
+			Color_Segmenter.aspectRatioDifferenceWeight = options.aspectRatioDifferenceWeight;
+			Color_Segmenter.colourDifferenceWeight = options.colourDifferenceWeight;
+			Color_Segmenter.minClusterChainLength = options.minClusterChainLength;
+			Color_Segmenter.majorMinorRatioLimit = options.majorMinorRatioLimit;
+			Color_Segmenter.chainJoiningScaler = options.chainJoiningScaler;
 
+			this.printDifferences = false;
+
+			this.minSliceNumber = options.minSliceNumber;
+			this.maxSliceNumber = options.maxSliceNumber;
+			this.minValue = options.minValue;
+			this.maxValue = options.maxValue;
+			this.minArea = options.minArea;
+			this.maxArea = options.maxArea;
+			this.minCenterX = options.minCenterX;
+			this.maxCenterX = options.maxCenterX;
+			this.minCenterY = options.minCenterY;
+			this.maxCenterY = options.maxCenterY;
+
+		}
+		else {
+			ObjectFinder.rootLowerBound = options.rootLowerBound;
+			ObjectFinder.rootUpperBound = options.rootUpperBound;
+			this.printMatches = true;
+			Color_Segmenter.minClusterSize = options.minClusterSize;
+			Color_Segmenter.maxCenterDistance = options.maxCenterDistance;
+			Color_Segmenter.areaDifferenceWeight = options.areaDifferenceWeight;
+			Color_Segmenter.aspectRatioDifferenceWeight = options.aspectRatioDifferenceWeight;
+			Color_Segmenter.colourDifferenceWeight = options.colourDifferenceWeight;
+			Color_Segmenter.minClusterChainLength = options.minClusterChainLength;
+			Color_Segmenter.majorMinorRatioLimit = options.majorMinorRatioLimit;
+			Color_Segmenter.chainJoiningScaler = options.chainJoiningScaler;
+
+			this.printDifferences = false;
+		}
 	}
 
 	public void run(ImageProcessor ip) {
@@ -75,7 +120,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		System.out.println("Created gui!");
 	}
 	
-	public void run(GUIOptions options) {
+	public void run(ColorBlobOptions options) {
 		this.updateImage(true);
 		if (options.printMatches) {
 			ObjectFinder.rootLowerBound = options.rootLowerBound;
@@ -1068,7 +1113,7 @@ class LimitSelecterFrame extends JFrame {
 					maxCenterY = Integer.parseInt(LimitSelecterFrame.this.maxCenterY.getText());
 					printDifferences = LimitSelecterFrame.this.printDifferences.isSelected();
 
-					GUIOptions optionsWithLimits = new GUIOptions(rootLowerBound, rootUpperBound, printMatches,
+					ColorBlobOptions optionsWithLimits = new ColorBlobOptions(rootLowerBound, rootUpperBound, printMatches,
 						minClusterSize, maxCenterDistance, areaDifferenceWeight, aspectRatioDifferenceWeight,
 						colourDifferenceWeight, minClusterChainLength, majorMinorRatioLimit, chainJoiningScaler,
 						minSliceNumber, maxSliceNumber, minValue, maxValue, minArea, maxArea,
@@ -1078,7 +1123,7 @@ class LimitSelecterFrame extends JFrame {
 				}				
 				else {
 
-					GUIOptions optionsNoLimits = new GUIOptions(rootLowerBound, rootUpperBound, printMatches,
+					ColorBlobOptions optionsNoLimits = new ColorBlobOptions(rootLowerBound, rootUpperBound, printMatches,
 						minClusterSize, maxCenterDistance, areaDifferenceWeight, aspectRatioDifferenceWeight,
 						colourDifferenceWeight, minClusterChainLength, majorMinorRatioLimit, chainJoiningScaler);
 					System.out.println("It was false, now about to run");
@@ -1177,77 +1222,4 @@ class LimitSelecterFrame extends JFrame {
 	}
 }
 
-//TODO: sanitise inputs.. finish both versions of constructor, 
-class GUIOptions {
-	public int rootLowerBound;
-	public int rootUpperBound;
-	public boolean printMatches;
-	public int minClusterSize;
-	public float maxCenterDistance;
-	public float areaDifferenceWeight;
-	public float aspectRatioDifferenceWeight;
-	public float colourDifferenceWeight;
-	
-	public int minClusterChainLength;
-	public float majorMinorRatioLimit;
-	public float chainJoiningScaler;
-	
-	public int minSliceNumber, maxSliceNumber;
-	public int minValue, maxValue;
-	public int minArea, maxArea;
-	public int minCenterX, maxCenterX, minCenterY, maxCenterY;
-	
-	public GUIOptions(int rootLowerBound, int rootUpperBound, boolean printMatches, int minClusterSize,
-					float maxCenterDistance, float areaDifferenceWeight, float aspectRatioDifferenceWeight, 
-					float colourDifferenceWeight, int minClusterChainLength, float majorMinorRatioLimit,
-					float chainJoiningScaler) {
-		
-		this.rootLowerBound = rootLowerBound;
-		this.rootUpperBound = rootUpperBound;
-		this.printMatches = printMatches;
-		this.minClusterSize = minClusterSize;
-		this.maxCenterDistance = maxCenterDistance;
-		this.areaDifferenceWeight = areaDifferenceWeight;
-		this.aspectRatioDifferenceWeight = aspectRatioDifferenceWeight;
-		this.colourDifferenceWeight = colourDifferenceWeight;
-		this.minClusterChainLength = minClusterChainLength;
-		this.majorMinorRatioLimit = majorMinorRatioLimit;
-		this.chainJoiningScaler = chainJoiningScaler;
 
-	}
-
-	public GUIOptions(int rootLowerBound, int rootUpperBound, boolean printMatches, int minClusterSize,
-					float maxCenterDistance, float areaDifferenceWeight, float aspectRatioDifferenceWeight,
-					float colourDifferenceWeight, int minClusterChainLength, float majorMinorRatioLimit,
-					float chainJoiningScaler, int minSliceNumber, int maxSliceNumber, int minValue, 
-					int maxValue, int minArea, int maxArea, int minCenterX, int maxCenterX, int minCenterY,
-					int maxCenterY,	boolean printDifferences) {
-
-
-		this.rootLowerBound = rootLowerBound;
-		this.rootUpperBound = rootUpperBound;
-		this.printMatches = printMatches;
-		this.minClusterSize = minClusterSize;
-		this.maxCenterDistance = maxCenterDistance;
-		this.areaDifferenceWeight = areaDifferenceWeight;
-		this.aspectRatioDifferenceWeight = aspectRatioDifferenceWeight;
-		this.colourDifferenceWeight = colourDifferenceWeight;
-		this.minClusterChainLength = minClusterChainLength;
-		this.majorMinorRatioLimit = majorMinorRatioLimit;
-		this.chainJoiningScaler = chainJoiningScaler;
-
-		this.minSliceNumber = minSliceNumber;
-		this.maxSliceNumber = maxSliceNumber;
-		this.minValue = minValue;
-		this.maxValue = maxValue;
-		this.minArea = minArea;
-		this.maxArea = maxArea;
-		this.minCenterX = minCenterX;
-		this.maxCenterX = maxCenterX;
-		this.minCenterY = minCenterY;
-		this.maxCenterY = maxCenterY;
-
-	}
-
-
-}

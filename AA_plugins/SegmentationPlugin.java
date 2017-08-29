@@ -20,7 +20,7 @@ import ij.measure.Calibration;
 import externalPluginCopies.*;
 import externalPluginCopies.FilterPlugin.FilterType;
 
-public abstract class SegmentationPlugin implements PlugInFilter {
+public abstract class SegmentationPlugin implements PlugInFilter, Runnable {
 	
 	ImagePlus image;
 	ImagePlus duplicateImage;
@@ -53,7 +53,7 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 		return DOES_8G+SUPPORTS_MASKING;
 	}
 	
-	public abstract void run(ImageProcessor ip);
+	public abstract void run();
 	
 	public void showAbout() {
 
@@ -67,10 +67,14 @@ public abstract class SegmentationPlugin implements PlugInFilter {
 		System.out.println("Running setup with image of size: " + currentImage.getStackSize());
 		this.setup("", currentImage);
 		if (duplicate) {
-			this.duplicateImage = this.image.duplicate();
-			this.duplicateImage.setTitle("Original Image");
-			System.out.println("Setup duplicate image");
+			this.duplicateImage();
 		}
+	}
+	
+	public void duplicateImage() {
+		this.duplicateImage = this.image.duplicate();
+		this.duplicateImage.setTitle("Original Image");
+		System.out.println("Duplicated image");
 	}
 	
 	

@@ -25,11 +25,10 @@ public class Global_Threshold extends SegmentationPlugin implements PlugInFilter
 	public Global_Threshold(ImagePlus image) {
 		super();
 		this.image = image;
-		run(this.image.getProcessor());
+		//this.run();
 	}
 	
-	
-	public void run(ImageProcessor ip) {
+	public void run() {
 		System.out.println("Begin Global Thresholding");
 		ImageConverter ic = new ImageConverter(this.image);
 		ic.convertToGray8();
@@ -60,6 +59,11 @@ public class Global_Threshold extends SegmentationPlugin implements PlugInFilter
 		filterPlugin.dilate3d(this.image);*/
 		
 		this.image.show();
+	}
+	
+	
+	public void run(ImageProcessor ip) {
+		this.run();
 	}
 		
 	
