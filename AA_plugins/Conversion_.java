@@ -176,7 +176,15 @@ public class Conversion_ implements PlugInFilter  {
 	}
 	
 	public void runGlobalIterative(Roi firstSliceRoi) {
-		new Global_Iterative(this.image, firstSliceRoi, outerRoi);
+		Runnable r = new Runnable() {
+			public void run() {
+				new Global_Iterative(Conversion_.this.image, firstSliceRoi, Conversion_.this.outerRoi);
+			}
+		};
+		Thread t = new Thread(r);
+		t.start();
+
+		//new Global_Iterative(this.image, firstSliceRoi, outerRoi);
 	}
 }
 
