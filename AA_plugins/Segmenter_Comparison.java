@@ -192,6 +192,8 @@ public class Segmenter_Comparison implements PlugInFilter {
 
 	public void adjustBrightnessContrast(ImagePlus image) {
 		
+		this.image.setRoi(stackRoi);
+		System.out.println("Entered adjustBrightnessContrast");
 		//System.out.println(image.getWidth()*image.getHeight()*image.getStack().getSize());
 		StackStatistics stats = new StackStatistics(image);
 		//System.out.println(stats);
