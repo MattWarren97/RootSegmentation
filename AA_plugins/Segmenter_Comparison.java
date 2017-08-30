@@ -117,7 +117,8 @@ public class Segmenter_Comparison implements PlugInFilter {
 		this.toBeRun.add(plugin);
 		this.listFrame.updateTable(plugin);
 		System.out.println("added a new plugin " + plugin);
-		this.duplicateImage();
+
+		//this.duplicateImage();
 		this.nextPluginImage = this.image;
 		new ConversionFrame(this);
 	}
@@ -348,7 +349,7 @@ class ConversionFrame extends BasicFrame {
 		topSliceLabel = new JLabel("Upper slice limit: ");
 		bottomSliceLabel = new JLabel("Lower slice limit: ");
 		topSliceNo = new JTextField(Integer.toString(plugin.image.getStackSize()), 5);
-		bottomSliceNo = new JTextField("0", 5);
+		bottomSliceNo = new JTextField("1", 5);
 		bothSelected = new JButton("Press when happy with top and bottom selection");
 		reverseSlices = new JCheckBox("Reverse slices?", false);
 
