@@ -103,8 +103,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		this.duplicateImage();
 		//this.duplicateImage.show();
 
-		System.out.println("In Global_Iterative - Image is " + this.image + "\n" +
-			"First pixel is " + ((byte[]) this.image.getStack().getProcessor(1).getPixels())[0]);
+		//System.out.println("In Global_Iterative - Image is " + this.image + "\n" +
+		//	"First pixel is " + ((byte[]) this.image.getStack().getProcessor(1).getPixels())[0]);
 
 		ImageProcessor ip;
 		System.out.println("Beginning Global Iterative process");

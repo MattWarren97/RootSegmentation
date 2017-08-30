@@ -535,10 +535,10 @@ class SegmentationListFrame extends BasicFrame {
 
 				for (SegmentationPlugin plugin: SegmentationListFrame.this.plugins) {
 					plugin.setImageTitle();
-					System.out.println("Image:" + plugin.getImage());
-					System.out.println("stack:" + plugin.image.getStack());
-					System.out.println("For: " + plugin + " - have started running.\n" + 
-						"image is " + plugin.image + ", pixels = " + plugin.image.getStack().getProcessor(1).getPixels());
+					//System.out.println("Image:" + plugin.getImage());
+					//System.out.println("stack:" + plugin.image.getStack());
+					//System.out.println("For: " + plugin + " - have started running.\n" + 
+					//	"image is " + plugin.image + ", pixels = " + plugin.image.getStack().getProcessor(1).getPixels());
 					Thread t = new Thread(plugin);
 					t.start();
 				}

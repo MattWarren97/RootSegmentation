@@ -229,7 +229,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		
 		highlightChains();
 		
-		this.limitSelecterFrame.enableRun();
+		this.image.setTitle("Color_Segmenter Result");
+		this.image.show();
+		//this.limitSelecterFrame.enableRun();
 	}
 	
 	public void findConnectedClusters() {
