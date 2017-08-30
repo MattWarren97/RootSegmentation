@@ -71,8 +71,9 @@ public class Segmenter_Comparison implements PlugInFilter {
 			this.lowerSliceLimit = limitB;
 		}
 		this.reverse = reverseSlices;
-
+		System.out.println("About to crop image.");
 		this.nextPluginImage = this.cropImage(this.image, lowerSliceLimit, upperSliceLimit);
+		SYstem.out.println("Finished Cropping image");
 		if (this.reverse) {
 			
 			//this.reverseStack();
@@ -361,6 +362,7 @@ class ConversionFrame extends BasicFrame {
 					return;
 				}
 				Boolean reverse = ConversionFrame.this.reverseSlices.isSelected();
+				System.out.println("Now onto conversionFrame.setSliceLimits");
 				ConversionFrame.this.setSliceLimits(top, bottom, reverse);
 				//ConversionFrame.this.reverse = reverse;
 
