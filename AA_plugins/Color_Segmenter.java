@@ -70,7 +70,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	public Color_Segmenter() {
 
 	}
-	
+
 	public Color_Segmenter(ImagePlus iPlus, ColorBlobOptions options) {
 		this.setup("", iPlus);
 		this.duplicateImage();
@@ -822,6 +822,7 @@ class ObjectFinder implements Runnable {
 		//		System.out.println();
 		//	}
 		//}
+		System.out.println("ip Width, Height: " + ip.getWidth() +"," + ip.getHeight());
 		points = new Point[this.X][this.Y];
 		for (int i = 0; i <= xMax; i++) {
 			for (int j = 0; j <= yMax; j++) {
