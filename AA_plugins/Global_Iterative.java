@@ -113,6 +113,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		int stackSize = stack.getSize();
 		for (sliceNumber = 1; sliceNumber <= stackSize; sliceNumber++) {
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
+			//System.out.println("Width, height is " + nextSlice.getWidth() + "," + nextSlice.getHeight());
 			calculate(nextSlice);
 			nextSlice.invert();
 		}
@@ -129,6 +130,8 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 			ip = nextSlice.convertToByteProcessor(true);
 			byteStack.setProcessor(ip, sliceNumber);
 			corePlugin.applyThreshold(ip, 0, 15);
+
+			//(new ImagePlus("Slice " + sliceNumber, ip)).show();
 		}
 		image = new ImagePlus("distance transformed", byteStack);
 		(new ImagePlus("After calculating Distance transform", byteStack)).show();
@@ -167,13 +170,18 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		ipCopy = (ImageProcessor) ip.clone();
 		ipCopy.setPixels(ip.getPixelsCopy());
 		
+
 		corePlugin.runGaussianMask(ip, gauss_mean, gauss_std);
 		filterPlugin.applyFilter(ip, MED_RD, FilterType.MEDIAN);
+		//(new ImagePlus("Slice " + sliceNumber, ip)).show();
 		corePlugin.applyThreshold(ip, 75, 255);
 		filterPlugin.applyFilter(ip, 2, FilterType.MIN);
 
+
 		ImagePlus iPlus = new ImagePlus("ip" + sliceNumber, ip);
 		ImagePlus iPlusCopy = new ImagePlus("ipcopy" + sliceNumber, ipCopy);
+
+		//iPlus.show();
 		
 		//iPlus.show();
 

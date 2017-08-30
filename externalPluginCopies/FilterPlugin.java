@@ -40,8 +40,11 @@ public class FilterPlugin {
 	public void applyFilter(ImageProcessor ip, int radius, FilterType filter) {
 		
 		Rectangle r = ip.getRoi();
+		//System.out.println("In filter " + filter + "roi is " + r);
 		int width = (int) r.getWidth();
 		int height = (int) r.getHeight();
+
+		//System.out.println("for filter " + filter + ", width, height are " + width + "," + height);
 		
 		byte[] pixels = (byte[]) ip.getPixels();
 
@@ -71,6 +74,9 @@ public class FilterPlugin {
 			
 		for(int j=0;j<output.length;j++)
 			pixels[j]=(byte)output[j];
+		if (filter == FilterType.MEDIAN) {
+			(new ImagePlus("After filter ", ip)).show();
+		}
 	}
 	
 	public int pixelMedian(int[][] array2d, int radius, int width, int height, int x, int y) {
