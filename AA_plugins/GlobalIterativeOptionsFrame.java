@@ -51,8 +51,16 @@ public class GlobalIterativeOptionsFrame extends JFrame {
 				float stdDev = Float.parseFloat(GlobalIterativeOptionsFrame.this.stdDev.getText());
 				int EDT_Threshold = Integer.parseInt(GlobalIterativeOptionsFrame.this.EDT_Threshold.getText());
 				
-				GlobalIterativeOptionsFrame.this.sc.addGI(stdDev, EDT_Threshold);
+				Runnable r = new Runnable() {
+					public void run() {
+						GlobalIterativeOptionsFrame.this.sc.addGI(stdDev, EDT_Threshold);
+					}
+				};
+				Thread t = new Thread(r);
+				t.start();
 				GlobalIterativeOptionsFrame.this.dispatchEvent(new WindowEvent(GlobalIterativeOptionsFrame.this, WindowEvent.WINDOW_CLOSING));
+
+				
 			}
 		});
 		this.add(run);

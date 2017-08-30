@@ -50,7 +50,9 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		
 		this.gauss_std = stdDev;
 		this.EDT_Threshold = EDT_Threshold;
+		System.out.println("About to findNewMean");
 		findNewMean(new ImagePlus("ip", image.getStack().getProcessor(1)), rootRoi);
+		System.out.println("Have found new mean!");
 		//this.run();
 	}
 
