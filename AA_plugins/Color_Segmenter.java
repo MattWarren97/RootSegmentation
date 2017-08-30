@@ -68,7 +68,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		
 		
 	public Color_Segmenter(ImagePlus iPlus, ColorBlobOptions options) {
-		this.image = iPlus;
+		this.setup("", iPlus);
 		this.duplicateImage();
 		if (options.printMatches) {
 			ObjectFinder.rootLowerBound = options.rootLowerBound;
@@ -754,6 +754,12 @@ class ObjectFinder implements Runnable {
 	public void convertToBins(ImageProcessor ip) {
 		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
 		ip.applyTable(Color_Segmenter.lut);
+		//if (this.sliceNumber == 1) {
+		//	for (int i = 0; i < 256; i++) {
+		//		System.out.println(i + ": " + Color_Segmenter.lut[i]);
+		//	}
+		//}
+		
 	}
 	
 	public ImageProcessor highlightClusters(ImageProcessor ip, ArrayList<Cluster> clusters) {
@@ -938,6 +944,7 @@ class ObjectFinder implements Runnable {
 			
 			ImagePlus imp = new ImagePlus("Display Processed Clusters" + clusterValue, highlightedClusters);
 			
+			//imp.show();
 			IJ.run(imp, "Median...", "2");
 			IJ.run(imp, "Invert", "");
 			IJ.run(imp, "Dilate", "");

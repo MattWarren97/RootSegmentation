@@ -24,7 +24,7 @@ public class Global_Threshold extends SegmentationPlugin implements PlugInFilter
 	
 	public Global_Threshold(ImagePlus image) {
 		super();
-		this.image = image;
+		this.setup("", image);
 		//this.run();
 	}
 	
