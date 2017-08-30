@@ -74,9 +74,9 @@ public class FilterPlugin {
 			
 		for(int j=0;j<output.length;j++)
 			pixels[j]=(byte)output[j];
-		if (filter == FilterType.MEDIAN) {
-			(new ImagePlus("After filter ", ip)).show();
-		}
+		//if (filter == FilterType.MEDIAN) {
+	//		(new ImagePlus("After filter ", ip)).show();
+//		}
 	}
 	
 	public int pixelMedian(int[][] array2d, int radius, int width, int height, int x, int y) {
