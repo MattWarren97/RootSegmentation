@@ -67,6 +67,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		//String toReturn = "";
 		
 		
+	public Color_Segmenter() {
+
+	}
+	
 	public Color_Segmenter(ImagePlus iPlus, ColorBlobOptions options) {
 		this.setup("", iPlus);
 		this.duplicateImage();
@@ -734,7 +738,6 @@ class ObjectFinder implements Runnable {
 		yMax = this.cs.Y - 1;
 		this.X = this.cs.X;
 		this.Y = this.cs.Y;
-
 	}
 	
 	public void run() {
