@@ -29,6 +29,8 @@ public class Segmenter_Comparison implements PlugInFilter {
 	public int Y;
 	public int Z;
 
+	ImagePlus nextPluginImage;
+
 
 	public int upperSliceLimit;
 	public int lowerSliceLimit;
@@ -69,6 +71,8 @@ public class Segmenter_Comparison implements PlugInFilter {
 			this.lowerSliceLimit = limitB;
 		}
 		this.reverse = reverseSlices;
+
+		this.nextPluginImage = this.cropImage(this.image, lowerSliceLimit, upperSliceLimit);
 		if (this.reverse) {
 			
 			//this.reverseStack();
@@ -78,7 +82,7 @@ public class Segmenter_Comparison implements PlugInFilter {
 	public void setStackRoi(Roi stackRoi) {
 		this.stackRoi = stackRoi;
 		if (reverse) {
-			this.reverseStack();
+			this.reverseStack(this.nextPluginImage);
 		}
 	}
 
@@ -88,20 +92,21 @@ public class Segmenter_Comparison implements PlugInFilter {
 
 	//copied and modified from https://imagej.nih.gov/ij/source/ij/plugin/StackReverser.java
 	//https://imagej.nih.gov/ij/plugins/reverser.html
-	public void reverseStack() {
-		ImageStack stack = this.image.getStack();
+	public void reverseStack(ImagePlus image) {
+		ImageStack stack = image.getStack();
 		int n = stack.getSize();
 		if (n == 1) return;
-		ImageStack stack2 = new ImageStack(this.image.getWidth(), this.image.getHeight(), n);
+		ImageStack stack2 = new ImageStack(image.getWidth(), image.getHeight(), n);
 		for (int i = 1; i <= n; i++) {
 			stack2.setPixels(stack.getPixels(i), (n-i+1));
 			stack2.setSliceLabel(stack.getSliceLabel(i),n-i+1);
 		}
-		this.image.setStack(stack2);
+		image.setStack(stack2);
 
 	}
 
 	public void run(ImageProcessor ip) {
+		this.nextPluginImage = this.image;
 		new ConversionFrame(this);
 	}
 
@@ -110,6 +115,7 @@ public class Segmenter_Comparison implements PlugInFilter {
 		this.listFrame.updateTable(plugin);
 		System.out.println("added a new plugin " + plugin);
 		this.duplicateImage();
+		this.nextPluginImage = this.image;
 		new ConversionFrame(this);
 	}
 
@@ -123,10 +129,11 @@ public class Segmenter_Comparison implements PlugInFilter {
 	public void addGlobalThreshold() {
 		Runnable r = new Runnable() {
 			public void run() {
-				ImagePlus iPlus = cropImage(Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
-				adjustBrightnessContrast(iPlus);
+				//ImagePlus iPlus = cropImage(Segmenter_Comparison.this.nextPluginImage, Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
+				ImagePlus nextPluginImage = Segmenter_Comparison.this.nextPluginImage;
+				adjustBrightnessContrast(nextPluginImage);
 
-				Global_Threshold gt = new Global_Threshold(iPlus);
+				Global_Threshold gt = new Global_Threshold(nextPluginImage);
 				Segmenter_Comparison.this.addPlugin(gt);
 			}
 		};
@@ -138,8 +145,9 @@ public class Segmenter_Comparison implements PlugInFilter {
 	public void addColorBlobs() {
 		Runnable r = new Runnable() {
 			public void run() {
-				ImagePlus iPlus = cropImage(Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
-				adjustBrightnessContrast(iPlus);
+				//ImagePlus iPlus = cropImage(Segmenter_Comparison.this.nextPluginImage, Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
+				ImagePlus nextPluginImage = Segmenter_Comparison.this.nextPluginImage;
+				adjustBrightnessContrast(nextPluginImage);
 
 				Segmenter_Comparison.this.getOptions(Method.COLOR_BLOBS);
 				//Color_Segmenter cs = new Color_Segmenter(iPlus, )
@@ -151,7 +159,7 @@ public class Segmenter_Comparison implements PlugInFilter {
 	}
 	
 	public void addCS(ColorBlobOptions options) {
-		Color_Segmenter cs = new Color_Segmenter(this.image, options);
+		Color_Segmenter cs = new Color_Segmenter(this.nextPluginImage, options);
 		this.addPlugin(cs);
 	}
 		
@@ -159,8 +167,10 @@ public class Segmenter_Comparison implements PlugInFilter {
 	public void addGlobalIterative() {
 		Runnable r = new Runnable() {
 			public void run() {
-				ImagePlus iPlus = cropImage(Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
-				adjustBrightnessContrast(iPlus);
+				//ImagePlus iPlus = cropImage(Segmenter_Comparison.this.nextPluginImage, Segmenter_Comparison.this.lowerSliceLimit, Segmenter_Comparison.this.upperSliceLimit);
+				ImagePlus nextPluginImage = Segmenter_Comparison.this.nextPluginImage;
+
+				adjustBrightnessContrast(nextPluginImage);
 
 				System.out.println("Should be a Global_Iterative options menu now!");
 				Segmenter_Comparison.this.getOptions(Method.GLOBAL_ITERATIVE);
@@ -173,7 +183,7 @@ public class Segmenter_Comparison implements PlugInFilter {
 	}
 	
 	public void addGI(float stdDev, int EDT_Threshold) {
-		Global_Iterative gi = new Global_Iterative(this.image, this.stackRoi, this.rootRoi, stdDev, EDT_Threshold);
+		Global_Iterative gi = new Global_Iterative(Segmenter_Comparison.this.nextPluginImage, this.stackRoi, this.rootRoi, stdDev, EDT_Threshold);
 		this.addPlugin(gi);
 	}
 
@@ -195,8 +205,8 @@ public class Segmenter_Comparison implements PlugInFilter {
 		
 	}
 
-	public ImagePlus cropImage(int lowerLimit, int higherLimit) {
-		ImageStack stack = this.image.getStack().duplicate();
+	public ImagePlus cropImage(ImagePlus image, int lowerLimit, int higherLimit) {
+		ImageStack stack = image.getStack().duplicate();
 		int higherLimitRelativeToStackEnd = stack.getSize() - higherLimit;
 		for (int i = 1; i < lowerLimit; i++) {
 			stack.deleteSlice(1);
@@ -380,7 +390,7 @@ class ConversionFrame extends BasicFrame {
 		});
 
 		firstRootSelected = new JButton("Initial Roots selected");
-		rootSelectionInstruction = new JLabel("Please select all the roots on the initial slice");
+		rootSelectionInstruction = new JLabel("Please select some of the root on the initial slice");
 		this.add(rootSelectionInstruction);
 		this.add(firstRootSelected);
 
@@ -494,7 +504,7 @@ class ConversionFrame extends BasicFrame {
 	}
 
 	public void enableStackRoiSelection() {
-		ImageProcessor ip_one = this.plugin.image.getStack().getProcessor(1);
+		ImageProcessor ip_one = this.plugin.nextPluginImage.getStack().getProcessor(1);
 		displayedSlice = new ImagePlus("First Image - please select stack roi", ip_one);
 		displayedSlice.show();
 		this.stackRoiSelected.setEnabled(true);
@@ -509,7 +519,7 @@ class ConversionFrame extends BasicFrame {
 	public void enableRootSelection() {
 		this.firstRootSelected.setEnabled(true);
 		this.rootSelectionInstruction.setEnabled(true);
-		ImageProcessor firstSlice = this.plugin.image.getStack().getProcessor(1);
+		ImageProcessor firstSlice = this.plugin.nextPluginImage.getStack().getProcessor(1);
 		displayedSlice = new ImagePlus("First Image - please select initial root area.", firstSlice);
 		displayedSlice.show();
 	}
