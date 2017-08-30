@@ -72,7 +72,9 @@ public class Segmenter_Comparison implements PlugInFilter {
 		}
 		this.reverse = reverseSlices;
 		System.out.println("About to crop image.");
+		//System.out.println("IN setSliceLimits, width,height are " + this.image.getWidth() + "," + this.image.getHeight());
 		this.nextPluginImage = this.cropImage(this.image, lowerSliceLimit, upperSliceLimit);
+		System.out.println("nextplugin image has width, height of" + nextPluginImage.getWidth() + "," + nextPluginImage.getHeight());
 		System.out.println("Finished Cropping image");
 		if (this.reverse) {
 			
@@ -207,14 +209,28 @@ public class Segmenter_Comparison implements PlugInFilter {
 	}
 
 	public ImagePlus cropImage(ImagePlus image, int lowerLimit, int higherLimit) {
-		ImageStack stack = image.getStack().duplicate();
-		int higherLimitRelativeToStackEnd = stack.getSize() - higherLimit;
-		for (int i = 1; i < lowerLimit; i++) {
-			stack.deleteSlice(1);
+		//System.out.println(image.getStack().getSize());
+		//System.out.println("Image height, width" + image.getWidth() + "," + image.getHeight());
+		//System.out.println("Stack height,width" + image.getStack().getWidth() + "," + image.getStack().getHeight());
+		//System.out.println("Stack length is " + image.getStack().getSize());
+		//System.out.println("Stack is virtual: " + image.getStack().isVirtual());
+
+		//System.out.println("Lower,higher are " + lowerLimit + "," + higherLimit);
+		//System.out.println("depth is " + (higherLimit-lowerLimit));
+		ImageStack stack = new ImageStack(image.getWidth(), image.getHeight(), higherLimit - lowerLimit + 1);
+		for (int i = 0; i <= (higherLimit-lowerLimit); i++) {
+			stack.setProcessor(image.getStack().getProcessor(lowerLimit+i), i+1);
 		}
-		for (int i = 0; i < higherLimitRelativeToStackEnd; i++) {
-			stack.deleteSlice(stack.getSize());
-		}
+		//ImageStack stack = image.getStack().crop(0,0,0, image.getWidth(), image.getHeight(), image.getStack().getSize());
+		//ImageStack stack = image.getStack().duplicate();
+		//System.out.println("in cropImage, width and height are " + stack.getWidth() + "," + stack.getHeight());
+		//int higherLimitRelativeToStackEnd = stack.getSize() - higherLimit;
+		//for (int i = 1; i < lowerLimit; i++) {
+		//	stack.deleteSlice(1);
+		//}
+		//for (int i = 0; i < higherLimitRelativeToStackEnd; i++) {
+		//	stack.deleteSlice(stack.getSize());
+		//}
 
 		return new ImagePlus("New_ImageCrop", stack);
 	}
