@@ -126,7 +126,7 @@ public class Global_Iterative extends SegmentationPlugin implements PlugInFilter
 		EDT edt = new EDT();
 		image = edt.performTransform(image); //returns a new object - a float image.
 		stack = image.getStack();
-		ImageStack byteStack = new ImageStack(X, Y, Z);
+		ImageStack byteStack = new ImageStack(stack.getWidth(), stack.getHeight(), stack.getSize());
 		for (sliceNumber = 1; sliceNumber<= stackSize; sliceNumber++) {
 			ImageProcessor nextSlice = stack.getProcessor(sliceNumber);
 			ip = nextSlice.convertToByteProcessor(true);
