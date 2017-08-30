@@ -70,12 +70,16 @@ public class Segmenter_Comparison implements PlugInFilter {
 		}
 		this.reverse = reverseSlices;
 		if (this.reverse) {
-			this.reverseStack();
+			
+			//this.reverseStack();
 		}
 	}
 
 	public void setStackRoi(Roi stackRoi) {
 		this.stackRoi = stackRoi;
+		if (reverse) {
+			this.reverseStack();
+		}
 	}
 
 	public void setRootRoi(Roi rootRoi) {
