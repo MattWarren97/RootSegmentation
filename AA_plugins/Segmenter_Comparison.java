@@ -73,9 +73,21 @@ public class Segmenter_Comparison implements PlugInFilter {
 		this.reverse = reverseSlices;
 		System.out.println("About to crop image.");
 		//System.out.println("IN setSliceLimits, width,height are " + this.image.getWidth() + "," + this.image.getHeight());
-		this.nextPluginImage = this.cropImage(this.image, lowerSliceLimit, upperSliceLimit);
-		System.out.println("nextplugin image has width, height of" + nextPluginImage.getWidth() + "," + nextPluginImage.getHeight());
-		System.out.println("Finished Cropping image");
+		
+
+		Runnable r = new Runnable() {
+			public void run() {
+				ImagePlus nextPluginImage = Segmenter_Comparison.this.cropImage(Segmenter_Comparison.this.image, lowerSliceLimit, upperSliceLimit);
+				System.out.println("Finished cropping image");
+				Segmenter_Comparison.this.nextPluginImage = nextPluginImage;
+			}
+		};
+		Thread t = new Thread(r);
+		t.start();
+		System.out.println("Begun cropping image");
+		//this.nextPluginImage = this.cropImage(this.image, lowerSliceLimit, upperSliceLimit);
+		//System.out.println("nextplugin image has width, height of" + nextPluginImage.getWidth() + "," + nextPluginImage.getHeight());
+		//System.out.println("Finished Cropping image");
 		if (this.reverse) {
 			
 			//this.reverseStack();
