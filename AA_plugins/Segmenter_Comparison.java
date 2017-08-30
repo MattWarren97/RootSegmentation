@@ -192,8 +192,7 @@ public class Segmenter_Comparison implements PlugInFilter {
 
 	public void adjustBrightnessContrast(ImagePlus image) {
 		
-		this.image.setRoi(stackRoi);
-		System.out.println("Entered adjustBrightnessContrast");
+		image.setRoi(stackRoi);
 		//System.out.println(image.getWidth()*image.getHeight()*image.getStack().getSize());
 		StackStatistics stats = new StackStatistics(image);
 		//System.out.println(stats);
@@ -204,6 +203,9 @@ public class Segmenter_Comparison implements PlugInFilter {
 		double max = stats.dmode;
 		image.setDisplayRange(min, max);
 		image.show();
+		System.out.println("min and max are " + min + "," + max);
+		System.out.println("mode is " + stats.dmode);
+		System.out.println("stdDev is " + stats.stdDev);
 		System.out.println("finished duplicating - now converting to 8 bit ");
 		ImageConverter ic = new ImageConverter(image);
 		ic.convertToGray8();
