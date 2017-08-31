@@ -20,7 +20,12 @@ import externalPluginCopies.FilterPlugin.FilterType;
 
 public class Global_Threshold extends SegmentationPlugin implements PlugInFilter {
 	
-	ImagePlus image;
+	//ImagePlus image;
+	
+	
+	public Global_Threshold() {
+		super();
+	}
 	
 	public Global_Threshold(ImagePlus image) {
 		super();

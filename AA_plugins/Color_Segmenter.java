@@ -115,6 +115,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			this.printDifferences = false;
 		}
 		System.out.println("Now about to run!");
+		System.out.println("MajorMinorRatioLimit is " + Color_Segmenter.majorMinorRatioLimit);
 		Thread t = new Thread(this);
 		t.start();
 	}
@@ -425,7 +426,12 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			if (nextLength >= Color_Segmenter.minClusterChainLength) {
 				
 				for (ClusterChain chain : chains) {
-					highlight(chain);
+					if (chain.ellipse.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
+						highlight(chain);
+					}
+					else {
+						System.out.println("Not accepted chain -- bad ratio");
+					}
 				}
 			}
 		}
@@ -460,10 +466,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			int chainLength = chainLengthIter.next();
 			if (chainLength >= Color_Segmenter.minClusterChainLength) {
 				ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(chainLength);
+				for (ClusterChain ch: chains) {
+					Ellipse ell = findEllipse(ch);
+					ch.setEllipse(ell);
+				}
 				ClusterChain chain = null;
 				for (ClusterChain ch: chains) {
 					if (ch.clusters.size() >= 8) {
 						chain = ch;
+						//Ellipse ell = findEllipse(chain)
 						break;
 					}
 				}
