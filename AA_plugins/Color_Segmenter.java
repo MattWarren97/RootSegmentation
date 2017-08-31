@@ -174,7 +174,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		//displayClusterPairs();
 		findChainedClusters();
 		
-		findConnectedChains();
+		//findConnectedChains();
 		
 		highlightChains();
 		
@@ -426,6 +426,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			if (nextLength >= Color_Segmenter.minClusterChainLength) {
 				
 				for (ClusterChain chain : chains) {
+					Ellipse ell = new Ellipse(chain);
+					chain.setEllipse(ell);
+
 					if (chain.ellipse.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
 						highlight(chain);
 					}
@@ -466,10 +469,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			int chainLength = chainLengthIter.next();
 			if (chainLength >= Color_Segmenter.minClusterChainLength) {
 				ArrayList<ClusterChain> chains = chainLengths_chains_MAP.get(chainLength);
-				for (ClusterChain ch: chains) {
-					Ellipse ell = findEllipse(ch);
-					ch.setEllipse(ell);
-				}
+				//for (ClusterChain ch: chains) {
+					///Ellipse ell = findEllipse(ch);
+					//ch.setEllipse(ell);
+				//}
 				ClusterChain chain = null;
 				for (ClusterChain ch: chains) {
 					if (ch.clusters.size() >= 8) {
@@ -483,25 +486,25 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 				}
 				
 				int whiteColour = 255;
-				ImagePlus iPlusHighlight = this.image.duplicate();
-				for (Cluster c : chain.clusters) {
+				//ImagePlus iPlusHighlight = this.image.duplicate();
+				//for (Cluster c : chain.clusters) {
 					
-					ImageProcessor sliceProcessor = iPlusHighlight.getStack().getProcessor(c.getSliceNumber());
-					byte[] pixels = (byte[]) sliceProcessor.getPixels();
+				//	ImageProcessor sliceProcessor = iPlusHighlight.getStack().getProcessor(c.getSliceNumber());
+				//	byte[] pixels = (byte[]) sliceProcessor.getPixels();
 					
-					for (Point p : c.points) {
-						pixels[p.y*sliceProcessor.getWidth()+p.x] = (byte) whiteColour;
-					}
-					sliceProcessor.setPixels(pixels);
-				}
-				iPlusHighlight.setTitle("One Root");
-				iPlusHighlight.show();
-				ImagePlus ellipseImage = this.image.duplicate();
-				Ellipse ell = findEllipse(chain);
-				chain.setEllipse(ell);
-				System.out.println("Ellipse had radii: " + ell.radiusA + "," + ell.radiusB + "," + ell.radiusC);
-				System.out.println("Ellipse had angle: " + ell.angleDegA + "," + ell.angleDegB + "," + ell.angleDegC);
-				System.out.println("This gives majorMinorRatio of " + ell.getMajorMinorRatio());
+				//	for (Point p : c.points) {
+				//		pixels[p.y*sliceProcessor.getWidth()+p.x] = (byte) whiteColour;
+				//	}
+				//	sliceProcessor.setPixels(pixels);
+				//}
+				//iPlusHighlight.setTitle("One Root");
+				//iPlusHighlight.show();
+				//ImagePlus ellipseImage = this.image.duplicate();
+				//Ellipse ell = findEllipse(chain);
+				//chain.setEllipse(ell);
+				//System.out.println("Ellipse had radii: " + ell.radiusA + "," + ell.radiusB + "," + ell.radiusC);
+				//System.out.println("Ellipse had angle: " + ell.angleDegA + "," + ell.angleDegB + "," + ell.angleDegC);
+				//System.out.println("This gives majorMinorRatio of " + ell.getMajorMinorRatio());
 				break;
 				
 
