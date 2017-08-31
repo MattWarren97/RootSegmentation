@@ -432,9 +432,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 					if (chain.ellipse.getMajorMinorRatio() >= Color_Segmenter.majorMinorRatioLimit) {
 						highlight(chain);
 					}
-					else {
-						System.out.println("Not accepted chain -- bad ratio");
-					}
+					//else {
+					//	System.out.println("Not accepted chain -- bad ratio");
+					//}
 				}
 			}
 		}
