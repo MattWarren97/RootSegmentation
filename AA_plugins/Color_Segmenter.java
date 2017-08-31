@@ -472,6 +472,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 
 	//This method IS NOT USED.
 	//joining chains together is a possible idea to improve the algorithm.
+	//this would really help to allow higher majorMinorRatioLimit to be selected.
 	public void findConnectedChains() {
 		//for every chain found, fit an ellipse on it to see if it's the right shape.
 		//if it has major/minor of larger than 'majorMinorRatioLimit', 
