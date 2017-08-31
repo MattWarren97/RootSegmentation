@@ -120,7 +120,15 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		t.start();
 	}
 						
-		
+	
+	//the core method --
+	//	A group of ObjectFinders are created. They process every slice.
+	//	When all are finished, the results from each ObjectFinder are joined together into 
+	//	'sliceNumber_clusterValue_clusters_MAP'.
+	//	Then, clusters are connected to each other.
+	// 	Pairs of clusters are turned into chains of clusters
+	//	Those chains of clusters are tested vs. some criteria -and those that fit will be selected.
+	//	Selected chains are highlighted and a new image (the segmentation) is created.
 	public void run() {
 		
 		this.sliceClusterMap = new HashMap<Integer, ArrayList<Cluster>>(); //TODO does this need to be synchronised?
@@ -181,6 +189,9 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		this.limitSelecterFrame.enableRun();
 	}
 	
+	//Method that will obtain clusters from sliceNumber_clusterValue_clusters_MAP
+	//and create chains of clusters that are placed in pairedClustersBySlice.
+	//Any cluster can be mapped to at most one other cluster (from the next slice).
 	public void findConnectedClusters() {
 		HashMap<Cluster, Cluster> connectedClusters;
 		
@@ -291,7 +302,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	}
 	
 	
-	public void displayClusterPairs() {
+	/*public void displayClusterPairs() {
 		//System.out.println(pairedClustersBySlice);
 		HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
 		ImageProcessor sliceOne = this.image.getStack().getProcessor(1);
@@ -326,22 +337,24 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 			this.image.getStack().addSlice(newSliceTwo);
 		}
 			
-		/*HashMap<Cluster, Integer> valueAppearances = new HashMap<Cluster, Integer>();
-		for (Cluster key: connectedClusters.keySet()) {
-			Cluster value = connectedClusters.get(key);
-			if (valueAppearances.keySet().contains(value)) {
-				valueAppearances.put(value, valueAppearances.get(value) + 1);
-			}
-			else {
-				valueAppearances.put(value, 1);
-			}
-		}
-		System.out.println(valueAppearances);
-		//HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
-		//ImagePlus ip = this.image.duplicate();*/
+		//HashMap<Cluster, Integer> valueAppearances = new HashMap<Cluster, Integer>();
+		//for (Cluster key: connectedClusters.keySet()) {
+		//	Cluster value = connectedClusters.get(key);
+		//	if (valueAppearances.keySet().contains(value)) {
+		//		valueAppearances.put(value, valueAppearances.get(value) + 1);
+		//	}
+		//	else {
+		//		valueAppearances.put(value, 1);
+		//	}
+		//}
+		//System.out.println(valueAppearances);
+		///HashMap<Cluster, Cluster> connectedClusters = pairedClustersBySlice.get(1);
+		//ImagePlus ip = this.image.duplicate();
 		this.image.show();
-	}
+	}*/
 
+	//method that finds chains of clusters, -- built up from the pairs of clusters in pairedClustersBySlice
+	//if A->B and B->C then A->B->C will be a chain.
 	public void findChainedClusters() {
 		chainLengths_chains_MAP = new HashMap<Integer, ArrayList<ClusterChain>>();
 
@@ -412,6 +425,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 		t.start();
 	}
 	
+	//create an image where all the chains that meet the criteria are highlighted.
 	private void highlightChains() {
 
 		//System.out.println("Chain lengths:");
@@ -454,6 +468,10 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 	
 	//chains should try to join up to other chains (to plug gaps).
 	//short chains (more likely to be noise) should not be joined up so easily as long chains to other long chains
+	
+
+	//This method IS NOT USED.
+	//joining chains together is a possible idea to improve the algorithm.
 	public void findConnectedChains() {
 		//for every chain found, fit an ellipse on it to see if it's the right shape.
 		//if it has major/minor of larger than 'majorMinorRatioLimit', 
@@ -651,10 +669,7 @@ public class Color_Segmenter extends SegmentationPlugin implements PlugInFilter,
 }
 
 class ObjectFinder implements Runnable {
-	
-	
-	//TODO: Do I use neighbours for anything? I don't think I do -- could that be removed?
-	
+		
 	int start, end;
 	ImageStack stack;
 	Color_Segmenter cs;
@@ -709,11 +724,13 @@ class ObjectFinder implements Runnable {
 		findChains();
 	}
 	
+	//convert the image to 4-bit/5-bit [depending on the Color_Segmenter.lut settings].
 	public void convertToBins(ImageProcessor ip) {
 		//copying some lines from the threshold code (https://imagej.nih.gov/ij/source/ij/plugin/Thresholder.java)
 		ip.applyTable(Color_Segmenter.lut);
 	}
 	
+	//highlight all the clusters that are found on the image -- return that new ImageProcessor
 	public ImageProcessor highlightClusters(ImageProcessor ip, ArrayList<Cluster> clusters) {
 		int pointCount = 0;
 		for (Cluster c: clusters) {
@@ -762,6 +779,10 @@ class ObjectFinder implements Runnable {
 	public void findClusters(ImageProcessor ip, int clusterValue) {
 		findClusters(ip, clusterValue, clusterValue);	
 	}
+
+	//form a list of all the clusters in the image.
+	//a cluster is a 4-way connected set of pixels where all the pixel grey-values are
+	//within 1 of the cluster's initial point's value.
 	public void findClusters(ImageProcessor ip, int pixelValue, int clusterValue) {
 		//if (sliceNumber == 1) {
 		//	System.out.println("Running findClusters on " + pixelValue);
@@ -878,7 +899,13 @@ class ObjectFinder implements Runnable {
 	}
 	
 	
-	//an entirely different implementation...
+	//first find all the clusters in the image,
+	//	then process those clusters -- median/dilate/Fill-Holes/Erode/Watershed -- this should 
+	//	split up roots that join to each other - and join up any two clusters that each found
+	//	half of a root but weren't connected up to each other.
+	//	
+	//	Then findClusters again on the processed image to get the final set of clusters.
+	//	Only clusters that are large enough will be selected.
 	public void connectivityAnalysis(ImageProcessor ip) {
 		
 
@@ -937,6 +964,7 @@ class ObjectFinder implements Runnable {
 		
 }
 
+//GUI to select parameters for Color_Segmenter
 class LimitSelecterFrame extends JFrame {
 	Color_Segmenter cs;
 	JButton run;
@@ -1155,9 +1183,9 @@ class LimitSelecterFrame extends JFrame {
 		this.minClusterChainLength = new JTextField("15", 5);
 		postProcessPanel.add(minClusterChainLength);
 		
-		postProcessPanel.add(new JLabel("chainJoiningScaler"));
+		//postProcessPanel.add(new JLabel("chainJoiningScaler"));
 		this.chainJoiningScaler = new JTextField("1", 5);
-		postProcessPanel.add(chainJoiningScaler);
+		//postProcessPanel.add(chainJoiningScaler);
 		
 		postProcessPanel.add(new JLabel("majorMinorRatioLimit"));
 		this.majorMinorRatioLimit = new JTextField("2", 5);
